@@ -4,7 +4,6 @@ typedef uint32_t u32;
 
 void PioStateMachine::tick()
 {
-
 }
 
 void PioStateMachine::doSideSet()
@@ -81,11 +80,10 @@ void PioStateMachine::executeJmp()
             doJump = true;
         break;
     case 0b010: // X--: scratch X non-zero, prior to decrement
+        //before the decrement took place: if the register is initially nonzero, the branch is taken.  (s3.4.2.2)
         if (regs.x != 0)
-        {
             doJump = true;
-            regs.x--;
-        }
+        regs.x--; // JMP X-- and JMP Y-- always decrement scratch register
         break;
     case 0b011: // !Y: scratch Y zero
         if (regs.y == 0)
@@ -93,10 +91,8 @@ void PioStateMachine::executeJmp()
         break;
     case 0b100: // Y--: scratch Y non-zero, prior to decrement
         if (regs.y != 0)
-        {
             doJump = true;
-            regs.y--;
-        }
+        regs.y--;
         break;
     case 0b101: // X!=Y: scratch X not equal scratch Y
         if (regs.x != regs.y)
@@ -240,7 +236,8 @@ void PioStateMachine::executeIn()
         // right shift
         regs.ISR = regs.ISR >> bitCount;
         regs.ISR |= (data << (32 - bitCount));
-    } else
+    }
+    else
     {
         // left shift
         regs.ISR = regs.ISR << bitCount;
@@ -249,39 +246,32 @@ void PioStateMachine::executeIn()
 
     // update ISR_shift_count
     regs.ISR += bitCount;
-    if (regs.ISR > settings.push_threshold)  // TODO: Need spec check here!
+    if (regs.ISR > settings.push_threshold) // TODO: Need spec check here!
         regs.ISR = 0;
 
     // TODO: Auto Push
-
 }
 
 void PioStateMachine::executeOut()
 {
-
 }
 
 void PioStateMachine::executePush()
 {
-
 }
 
 void PioStateMachine::executePull()
 {
-
 }
 
 void PioStateMachine::executeMov()
 {
-
 }
 
 void PioStateMachine::executeIrq()
 {
-
 }
 
 void PioStateMachine::executeSet()
 {
-
 }
