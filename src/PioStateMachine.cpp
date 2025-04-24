@@ -148,11 +148,17 @@ void PioStateMachine::executeWait()
         if (gpio.raw_data[(settings.in_base + index) % 32] != polarity)
             condIsNotMet = true;
         break;
-    case 0b10: // IRQ: wait for PIO IRQ flag selected by Index (見3.4.9.2)  TODO: Need check!
+    case 0b10: // IRQ: wait for PIO IRQ flag selected by Index (見3.4.9.2)  TODO: Need check!(irq number calculation)
         {
-            u32 irq_wait_num = index & 0b00111; // extract bit 2:0, irq number 0~7
-            if ((index >> 4) & 1) // index MSB set, add state machine number to irq number
-                irq_wait_num = (irq_wait_num + stateMachineNumber) % 4;
+            u32 index_msb = (index >> 4) & 1; // bit 4
+            u32 irq_wait_num = index & 0b111; // The 3 LSBs specify an IRQ index from 0-7. (s3.4.9.2)
+            //If the MSB is set, the sm ID (0…3) is added to the IRQ index, by way of modulo-4 addition on the "two LSBs" (s3.4.9.2)  // TODO:Need spec check
+            if (index_msb == 1)
+            {
+                u32 index_2lsbs = irq_wait_num & 0b11; // get the 2 LSBs
+                irq_wait_num = (index_2lsbs + stateMachineNumber) % 4; // modulo-4 addition on the "two LSBs"
+                irq_wait_num |= (index & 0b100); // Preserve bit 2
+            }
             if (irq_flags[irq_wait_num] != polarity)
                 condIsNotMet = true;
             else if (irq_flags[irq_wait_num] == polarity && polarity == 1)
@@ -171,7 +177,7 @@ void PioStateMachine::executeWait()
     {
         // wait:A WAIT instruction’s condition is not yet met (s3.2.4)
         skip_increase_pc = true;
-        delayFlag = true;
+        delay_flag = true;
     }
 }
 
@@ -274,6 +280,54 @@ void PioStateMachine::executeMov()
 
 void PioStateMachine::executeIrq()
 {
+    // Obtain Instruction fields
+    u32 clear = (currentInstruction >> 5) & 1; // bit 5
+    u32 wait = (currentInstruction >> 6) & 1; // bit 6
+    u32 index = currentInstruction & 0b1'1111; // bits 4:0
+    u32 index_msb = (index >> 4) & 1; // bit 4
+
+    u32 irqNum = index & 0b111; // The 3 LSBs specify an IRQ index from 0-7. (s3.4.9.2)
+    //If the MSB is set, the sm ID (0…3) is added to the IRQ index, by way of modulo-4 addition on the "two LSBs" (s3.4.9.2)  // TODO:Need spec check
+    if (index_msb == 1)
+    {
+        u32 index_2lsbs = irqNum & 0b11; // get the 2 LSBs
+        irqNum = (index_2lsbs + stateMachineNumber) % 4; // modulo-4 addition on the "two LSBs"
+        irqNum |= (index & 0b100); // Preserve bit 2
+    }
+
+    // TODO: Controll flow Need spec check!
+    // The irq instruction is already waiting for clearing
+    if (irq_is_waiting == true)
+    {
+        // Check if we need to keep waiting
+        if (irq_flags[irqNum] == true)
+        {
+            // Still waiting for IRQ to clear
+            skip_increase_pc = true;
+            delay_flag = true;
+            return;
+        }
+        else
+        {
+            // Irq have been cleared
+            irq_is_waiting = false;
+            return;
+        }
+    }
+
+    if (clear == 1)
+        irq_flags[irqNum] = false; // clear irq
+    else
+    {
+        // set irq
+        irq_flags[irqNum] = true;
+        if (wait == 1)
+        {
+            irq_is_waiting = true;
+            skip_increase_pc = true;
+            delay_flag = true;
+        }
+    }
 }
 
 void PioStateMachine::executeSet()

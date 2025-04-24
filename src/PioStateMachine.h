@@ -12,7 +12,7 @@ public:
     // Runtime emu flags
     int jmp_to = -1;
     bool skip_increase_pc = false;
-    bool delayFlag = false;
+    bool delay_flag = false;
 
     // State registers
     struct Registers
@@ -59,9 +59,6 @@ public:
         std::array<int8_t, 32> pindirs;
     } gpio;
 
-    // Program and execution state
-    std::array<bool, 4> sm_irq{false, false, false, false};
-
     // FIFOs
     std::array<uint32_t, 4> TxFIFO;
     std::array<uint32_t, 4> RxFIFO;
@@ -69,10 +66,11 @@ public:
     int RxFIFO_in_use_count = 0;
     bool push_is_stalling = false;
     bool pull_is_stalling = false;
-    bool irq_is_waiting = false;
+
 
     // IRQs
     std::array<bool, 8> irq_flags;
+    bool irq_is_waiting = false;
 
     void tick(); // Foward a clock
     void executeInstruction();
