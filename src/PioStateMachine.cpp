@@ -57,7 +57,7 @@ void PioStateMachine::executeInstruction()
     }
 
     // When not pull or mov, do autopull (if enabled) (s3.5.4)
-    // TODO: auto pull, do delay (Do we want to put delay here?)
+    // TODO: auto pull
 }
 
 void PioStateMachine::executeJmp()
@@ -101,11 +101,11 @@ void PioStateMachine::executeJmp()
     case 0b110: // PIN: branch on input pin
         if (settings.jmp_pin == -1) // jmp_pin not set
         {
-            std::cout << "WARN: jmp_pin isn't set before use in JMP pin, continuing"
+            std::cout << "WARN: jmp_pin isn't set before use in JMP pin, continuing";
             break;
         }
-        if (gpio.data_raw[settings.jmp_pin] == 1)
-            doJump = 1; // Branch if the GPIO is high
+        if (gpio.raw_data[settings.jmp_pin] == 1)
+            doJump = true; // Branch if the GPIO is high
         break;
     case 0b111: // !OSRE: output shift register not empty
         if (regs.osr_shift_count < settings.pull_threshold) // Compair with SHIFTCTRL_PULL_THRESH (P.324)
@@ -135,28 +135,31 @@ void PioStateMachine::executeWait()
     switch (source)
     {
     case 0b00: // GPIO: wait for gpio input selected by index (absolute)
-        if (gpio.data_raw[index] != polarity)
+        if (gpio.raw_data[index] != polarity)
             condIsNotMet = true;
         break;
     case 0b01: // PIN: sm's input io mapping, index select which of the mapped bit to wait
         if (settings.in_base == -1)
         {
-            std::cout << "WARN: in_base isn't set before use in wait pin, continuing"
+            std::cout << "WARN: in_base isn't set before use in wait pin, continuing";
             break;
         }
     // pin is selected by adding Index to the PINCTRL_IN_BASE configuration, modulo 32 (s3.4.3.2)
-        if (gpio.data_raw[(settings.in_base + index) % 32] != polarity)
+        if (gpio.raw_data[(settings.in_base + index) % 32] != polarity)
             condIsNotMet = true;
         break;
     case 0b10: // IRQ: wait for PIO IRQ flag selected by Index (見3.4.9.2)  TODO: Need check!
-        u32 irq_wait_num = index & 0b00111; // extract bit 2:0, irq number 0~7
-        if ((index >> 4) & 1) // index MSB set, add state machine number to irq number
-            irq_wait_num = (irq_wait_num + stateMachineNumber) % 4;
-        if (irq_flags[irq_wait_num] != polarity)
-            condIsNotMet = true;
-        else if (rq_flags[irq_wait_num] == polarity && polarity == 1)
-            irq_flags[irq_wait_num] = false; // If Polarity is 1 IRQ flag is cleared by the sm when wait cond met.
-        break;
+        {
+            u32 irq_wait_num = index & 0b00111; // extract bit 2:0, irq number 0~7
+            if ((index >> 4) & 1) // index MSB set, add state machine number to irq number
+                irq_wait_num = (irq_wait_num + stateMachineNumber) % 4;
+            if (irq_flags[irq_wait_num] != polarity)
+                condIsNotMet = true;
+            else if (irq_flags[irq_wait_num] == polarity && polarity == 1)
+                irq_flags[irq_wait_num] = false;
+            // If Polarity is 1 IRQ flag is cleared by the sm when wait cond met. (s3.4.3.2)
+            break;
+        }
     case 0b11: // Reserved
         break;
     default:
@@ -166,9 +169,9 @@ void PioStateMachine::executeWait()
 
     if (condIsNotMet == true)
     {
-        // wait
+        // wait:A WAIT instruction’s condition is not yet met (s3.2.4)
         skip_increase_pc = true;
-        delayFlag = true; // TODO: Check if we want this
+        delayFlag = true;
     }
 }
 
@@ -189,42 +192,43 @@ void PioStateMachine::executeIn()
     if (bitCount == 0)
         bitCount = 32; // 32 is encoded as 0b00000
 
-    u32 mask = (i << bitCount) - 1;
+    u32 mask = (1 << bitCount) - 1;
     u32 data = 0;
 
     switch (source)
     {
     case 0b000: // PINS, use in mapping (PINCTRL_IN_BASE)
         if (settings.in_base == -1)
-            std::cout << "WARN: in_base isn't set before use in 'in pin', continuing\n"
-
+        {
+            std::cout << "WARN: in_base isn't set before use in 'in pin', continuing\n";
+            break;
+        }
     // Loop through the pins we need to read
         for (u32 i = 0; i < bitCount; i++)
         {
             // Calc the actual GPIO pin number (wrap around if > 31)
             u32 readPinNumber = (settings.in_base + i) % 32;
             // Shift the pin state to the correct position in data
-            data |= (gpio.data_raw[readPinNumber] << i)
+            data |= ((gpio.raw_data[readPinNumber] & 1) << i);
         }
         break;
     case 0b001: // X
-        data = X | mask;
+        data = regs.x & mask;
         break;
     case 0b010: // Y
-        data = Y | mask;
+        data = regs.y & mask;
         break;
     case 0b011: // NULL (all 0)
         data = 0;
         break;
     case 0b100: // Reserved
-        break;
-    case 0b101: // Reserved
+    case 0b101:
         break;
     case 0b110: // ISR
-        data = regs.ISR | mask;
+        data = regs.ISR & mask;
         break;
     case 0b111: // OSR
-        data = regs.OSR | mask;
+        data = regs.OSR & mask;
         break;
     default:
         std::cout << "WARN: 'IN' has unknown source, continuing\n";
@@ -245,9 +249,9 @@ void PioStateMachine::executeIn()
     }
 
     // update ISR_shift_count
-    regs.ISR += bitCount;
-    if (regs.ISR > settings.push_threshold) // TODO: Need spec check here!
-        regs.ISR = 0;
+    regs.isr_shift_count += bitCount;
+    if (regs.isr_shift_count >= settings.push_threshold) // TODO: Need spec check here! (P.338)
+        regs.isr_shift_count = 0;
 
     // TODO: Auto Push
 }
@@ -274,4 +278,53 @@ void PioStateMachine::executeIrq()
 
 void PioStateMachine::executeSet()
 {
+    // Obtain Instruction fields
+    u32 destinition = (currentInstruction >> 5) & 0b111; // bit 7:5
+    u32 data = currentInstruction & 0b1'1111; // bit 4:0
+
+    switch (destinition)
+    {
+    case 000: // PINS
+        if (settings.set_base == -1)
+            std::cout << "WARN: 'set_base' isn't set before use in SET instruction, continuing\n";
+        if (settings.set_count == -1)
+            std::cout << "WARN: 'set_count' isn't set before use in SET instruction, continuing\n";
+        else
+        {
+            for (int i = 0; i < settings.set_count; i++)
+            {
+                u32 setPin = (settings.set_base + i) % 32;
+                gpio.set_data[setPin] = (data & (1 << i)) ? 1 : 0;
+            }
+        }
+        break;
+    case 001: // X
+        regs.x = data;
+        break;
+    case 010: // Y
+        regs.y = data;
+        break;
+    case 011: // Reserved
+        break;
+    case 100: // PINDIRS
+        if (settings.set_base == -1)
+            std::cout << "WARN: 'set_base' isn't set before use in SET instruction, continuing\n";
+        if (settings.set_count == -1)
+            std::cout << "WARN: 'set_count' isn't set before use in SET instruction, continuing\n";
+        else
+        {
+            for (int i = 0; i < settings.set_count; i++)
+            {
+                u32 setPin = (settings.set_base + i) % 32;
+                gpio.pindirs[setPin] = (data & (1 << i)) ? 1 : 0;
+            }
+        }
+        break;
+    case 101: // Reserved
+    case 110:
+    case 111:
+        break;
+    default:
+        "WARN: 'set' has unknown destination, continuing\n";
+    }
 }

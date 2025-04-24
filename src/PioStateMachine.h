@@ -2,9 +2,9 @@
 #include <cstdint>
 #include <array>
 #include <vector>
-#include <variant>
 
-class PioStateMachine {
+class PioStateMachine
+{
 public:
     uint32_t instructionMemory[32];
     uint32_t currentInstruction;
@@ -15,7 +15,8 @@ public:
     bool delayFlag = false;
 
     // State registers
-    struct Registers {
+    struct Registers
+    {
         uint32_t x = 0;
         uint32_t y = 0;
         uint32_t ISR = 0;
@@ -28,7 +29,8 @@ public:
     } regs;
 
     // Configuration settings
-    struct Settings {
+    struct Settings
+    {
         int sideset_count = 0;
         bool sideset_opt = false;
         bool sideset_pindirs = false;
@@ -47,11 +49,14 @@ public:
     } settings;
 
     // GPIO regs (見s3.4.5)
-    struct GPIORegs {
-        std::array<uint8_t, 32> data_raw;
-        std::array<int, 32> out_set_map;
-        std::array<int, 32> sideset;
-        std::array<int, 32> pindirs;
+    struct GPIORegs
+    {
+        // because of priority, we have sepreate gpio regs
+        std::array<int8_t, 32> raw_data;
+        std::array<int8_t, 32> set_data;
+        std::array<int8_t, 32> out_data;
+        std::array<int8_t, 32> sideset;
+        std::array<int8_t, 32> pindirs;
     } gpio;
 
     // Program and execution state
@@ -72,7 +77,7 @@ public:
     void tick(); // Foward a clock
     void executeInstruction();
 
-// private:
+    // private:
     // Instruction handlers
     void executeJmp();
     void executeWait();
