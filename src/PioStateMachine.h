@@ -14,14 +14,15 @@ public:
     bool skip_increase_pc = false;
     bool delay_delay = false;  // For some instruction delays need to be postponed to after the instruction (e.g. wait) has finished
     bool skip_delay = false;   // (s3.4.5.2) for 'out exec' and 'mov exec' "Delay cycles on the initial OUT are ignored"
+    bool exec_command = false; // for 'out exec' and 'mov exec', might alter the logic for get nextInstruction for memory
 
     // State registers
     struct Registers
     {
         uint32_t x = 0;
         uint32_t y = 0;
-        uint32_t ISR = 0;
-        uint32_t OSR = 0;
+        uint32_t isr = 0;
+        uint32_t osr = 0;
         uint32_t isr_shift_count = 0;
         uint32_t osr_shift_count = 0;
         uint32_t pc = 0;

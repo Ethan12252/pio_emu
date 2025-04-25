@@ -233,10 +233,10 @@ void PioStateMachine::executeIn()
     case 0b101:
         break;
     case 0b110: // ISR
-        data = regs.ISR & mask;
+        data = regs.isr & mask;
         break;
     case 0b111: // OSR
-        data = regs.OSR & mask;
+        data = regs.osr & mask;
         break;
     default:
         std::cout << "WARN: 'IN' has unknown source, continuing\n";
@@ -246,14 +246,14 @@ void PioStateMachine::executeIn()
     if (settings.in_shift_right == true)
     {
         // right shift
-        regs.ISR = regs.ISR >> bitCount;
-        regs.ISR |= (data << (32 - bitCount));
+        regs.isr = regs.isr >> bitCount;
+        regs.isr |= (data << (32 - bitCount));
     }
     else
     {
         // left shift
-        regs.ISR = regs.ISR << bitCount;
-        regs.ISR |= data;
+        regs.isr = regs.isr << bitCount;
+        regs.isr |= data;
     }
 
     // update ISR_shift_count
@@ -284,17 +284,18 @@ void PioStateMachine::executeMov()
     u32 source = currentInstruction & 0b111; // bits 2:0
 
     // data to be moved
-    u32 data = -1;
+    u32 data = 0;
 
+    // --- Source Handling ---
     switch (source)
     {
     case 0b000: // PINS (use 'in' mapping)
         if (settings.in_base == -1)
         {
             std::cout << "WARN: in_base isn't set before use in 'mov dst, pin', continuing\n";
-            break;
+            return;
         }
-    // Loop through the pins we need to read
+        // Loop through the pins we need to read
         for (u32 i = 0; i < 32; i++)
         {
             // Calc the actual GPIO pin number (wrap around if > 31)
@@ -314,20 +315,21 @@ void PioStateMachine::executeMov()
         break;
     case 0b100: //Reserved
         // TODO:Log unknow source
-        break;
+        return;
     case 0b101: // STATUS
-        data = regs.status;
+        data = regs.status;  // Assumes regs.status is pre-configured
         break;
     case 0b110: //ISR
-        data = regs.ISR;
+        data = regs.isr;
         break;
     case 0b111: // OSR
-        data = regs.OSR;
+        data = regs.osr;
         break;
     //default:
     // TODO: Log unknow source
     }
 
+    // --- Operation ---
     // Apply the operation on data
     switch (op)
     {
@@ -340,7 +342,7 @@ void PioStateMachine::executeMov()
         {
             u32 old_data = data;
             data = 0;
-            for (int i = 0; i < 32; i++)
+            for (int i = 0; i < 32; i++)  // function checked
             {
                 data |= ((old_data >> i) & 1) << (31 - i);
             }
@@ -351,6 +353,7 @@ void PioStateMachine::executeMov()
     //TODO: add default to log unknow option
     }
 
+    // --- Destination ---
     // Place data to destination
     switch (destination)
     {
@@ -358,12 +361,12 @@ void PioStateMachine::executeMov()
         if (settings.out_base == -1)
         {
             std::cout << "WARN: out_base isn't set before use in 'mov pin, src, continuing\n";
-            break;
+            return;
         }
         if (settings.out_count == -1)
         {
             std::cout << "WARN: out_count isn't set before use in 'mov pin, src, continuing\n";
-            break;
+            return;
         }
     // Loop through the pins we need to write
         for (u32 i = 0; i < settings.out_count; i++)
@@ -382,22 +385,23 @@ void PioStateMachine::executeMov()
         break;
     case 0b011: // Reserved
         // TODO:Log unknow source
-        break;
+        return;
     case 0b100: // EXEC  TODO: Need function check!!
         skip_increase_pc = true;
         skip_delay = true;
-        currentInstruction = regs.ISR;  // Next instruction (we dont increace pc next cycle)
+        exec_command = true;
+        currentInstruction = data;  // Next instruction (we dont increace pc next cycle)
         break;
     case 0b101: // PC
         skip_increase_pc = true;
         jmp_to = data & 0b1'1111;  // 0 ~ 32
         break;
     case 0b110: //ISR
-        regs.ISR = data;
+        regs.isr = data;
         regs.isr_shift_count = 0;
         break;
     case 0b111: // OSR
-        regs.OSR = data;
+        regs.osr = data;
         regs.osr_shift_count = 0;
         break;
     //default:
