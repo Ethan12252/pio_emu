@@ -1,5 +1,7 @@
 #include "PioStateMachine.h"
-#include  <iostream>
+#include <iostream>
+#include <bit>
+
 typedef uint32_t u32;
 
 void PioStateMachine::tick()
@@ -177,7 +179,7 @@ void PioStateMachine::executeWait()
     {
         // wait:A WAIT instruction’s condition is not yet met (s3.2.4)
         skip_increase_pc = true;
-        delay_flag = true;
+        delay_delay = true;
     }
 }
 
@@ -276,6 +278,131 @@ void PioStateMachine::executePull()
 
 void PioStateMachine::executeMov()
 {
+    // Obtain Instruction fields
+    u32 destination = (currentInstruction >> 5) & 0b111; // bits 7:5
+    u32 op = (currentInstruction >> 3) & 0b11; // bits 4:3
+    u32 source = currentInstruction & 0b111; // bits 2:0
+
+    // data to be moved
+    u32 data = -1;
+
+    switch (source)
+    {
+    case 0b000: // PINS (use 'in' mapping)
+        if (settings.in_base == -1)
+        {
+            std::cout << "WARN: in_base isn't set before use in 'mov dst, pin', continuing\n";
+            break;
+        }
+    // Loop through the pins we need to read
+        for (u32 i = 0; i < 32; i++)
+        {
+            // Calc the actual GPIO pin number (wrap around if > 31)
+            u32 readPinNumber = (settings.in_base + i) % 32;
+            // Shift the pin state to the correct position in data
+            data |= ((gpio.raw_data[readPinNumber] & 1) << i);
+        }
+        break;
+    case 0b001: // X
+        data = regs.x;
+        break;
+    case 0b010: // Y
+        data = regs.y;
+        break;
+    case 0b011: // NULL
+        data = 0;
+        break;
+    case 0b100: //Reserved
+        // TODO:Log unknow source
+        break;
+    case 0b101: // STATUS
+        data = regs.status;
+        break;
+    case 0b110: //ISR
+        data = regs.ISR;
+        break;
+    case 0b111: // OSR
+        data = regs.OSR;
+        break;
+    //default:
+    // TODO: Log unknow source
+    }
+
+    // Apply the operation on data
+    switch (op)
+    {
+    case 0b00: // none
+        break;
+    case 0b01: // invert (bit-wise not)
+        data = ~data;
+        break;
+    case 0b10: // bit-reverse
+        {
+            u32 old_data = data;
+            data = 0;
+            for (int i = 0; i < 32; i++)
+            {
+                data |= ((old_data >> i) & 1) << (31 - i);
+            }
+            break;
+        }
+    case 0b11: // reserved
+        break;
+    //TODO: add default to log unknow option
+    }
+
+    // Place data to destination
+    switch (destination)
+    {
+    case 0b000: // PINS (use 'out' mapping)
+        if (settings.out_base == -1)
+        {
+            std::cout << "WARN: out_base isn't set before use in 'mov pin, src, continuing\n";
+            break;
+        }
+        if (settings.out_count == -1)
+        {
+            std::cout << "WARN: out_count isn't set before use in 'mov pin, src, continuing\n";
+            break;
+        }
+    // Loop through the pins we need to write
+        for (u32 i = 0; i < settings.out_count; i++)
+        // P.337 OUT_COUNT: The number of pins asserted by ... MOV PINS instruction.
+        {
+            // Calc the actual GPIO pin number (wrap around if > 31)
+            u32 writePinNumber = (settings.out_base + i) % 32;
+            gpio.out_data[writePinNumber] = (data & (1 << i)) ? 1 : 0;
+        }
+        break;
+    case 0b001: // X
+        regs.x = data;
+        break;
+    case 0b010: // Y
+        regs.y = data;
+        break;
+    case 0b011: // Reserved
+        // TODO:Log unknow source
+        break;
+    case 0b100: // EXEC  TODO: Need function check!!
+        skip_increase_pc = true;
+        skip_delay = true;
+        currentInstruction = regs.ISR;  // Next instruction (we dont increace pc next cycle)
+        break;
+    case 0b101: // PC
+        skip_increase_pc = true;
+        jmp_to = data & 0b1'1111;  // 0 ~ 32
+        break;
+    case 0b110: //ISR
+        regs.ISR = data;
+        regs.isr_shift_count = 0;
+        break;
+    case 0b111: // OSR
+        regs.OSR = data;
+        regs.osr_shift_count = 0;
+        break;
+    //default:
+    // TODO: Log unknow dest
+    }
 }
 
 void PioStateMachine::executeIrq()
@@ -304,7 +431,7 @@ void PioStateMachine::executeIrq()
         {
             // Still waiting for IRQ to clear
             skip_increase_pc = true;
-            delay_flag = true;
+            delay_delay = true;
             return;
         }
         else
@@ -325,7 +452,7 @@ void PioStateMachine::executeIrq()
         {
             irq_is_waiting = true;
             skip_increase_pc = true;
-            delay_flag = true;
+            delay_delay = true;
         }
     }
 }

@@ -12,7 +12,8 @@ public:
     // Runtime emu flags
     int jmp_to = -1;
     bool skip_increase_pc = false;
-    bool delay_flag = false;
+    bool delay_delay = false;  // For some instruction delays need to be postponed to after the instruction (e.g. wait) has finished
+    bool skip_delay = false;   // (s3.4.5.2) for 'out exec' and 'mov exec' "Delay cycles on the initial OUT are ignored"
 
     // State registers
     struct Registers
@@ -66,7 +67,6 @@ public:
     int RxFIFO_in_use_count = 0;
     bool push_is_stalling = false;
     bool pull_is_stalling = false;
-
 
     // IRQs
     std::array<bool, 8> irq_flags;
