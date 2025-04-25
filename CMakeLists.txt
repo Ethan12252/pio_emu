@@ -8,3 +8,6 @@ add_executable(pio_emu
         src/PioStateMachine.cpp
         src/PioStateMachine.h
 )
+
+find_package(fmt CONFIG REQUIRED)
+target_link_libraries(${PROJECT_NAME} PRIVATE fmt::fmt)

@@ -1,0 +1,9 @@
+{
+  "name" : "pio-emu",
+  "version-string" : "0.0.0",
+  "builtin-baseline" : "760bfd0c8d7c89ec640aec4df89418b7c2745605",
+  "dependencies" : [ {
+    "name" : "fmt",
+    "version>=" : "11.0.2#1"
+  } ]
+}
