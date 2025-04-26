@@ -7,8 +7,8 @@ typedef uint32_t u32;
 void PioStateMachine::push_to_rx_fifo()
 {
     // Push data to the rx fifo (assume already check if there is space)
-    rx_fifo[rx_fifo_in_use_count] = regs.isr;
-    rx_fifo_in_use_count++;
+    rx_fifo[rx_fifo_count] = regs.isr;
+    rx_fifo_count++;
     regs.isr_shift_count = 0;
     regs.isr = 0;
 }
@@ -18,12 +18,12 @@ void PioStateMachine::pull_from_tx_fifo()
     // Pull data from tx fifo (assume already check for space)
     regs.osr = tx_fifo[0];
     // shift the whole tx fifo
-    for (int i = 0; i < tx_fifo_in_use_count - 1; i++)
+    for (int i = 0; i < tx_fifo_count - 1; i++)
     {
         tx_fifo[i] = tx_fifo[i + 1];
     }
-    tx_fifo[tx_fifo_in_use_count - 1] = 0; // clear the last element (got duplicated)
-    tx_fifo_in_use_count--;
+    tx_fifo[tx_fifo_count - 1] = 0; // clear the last element (got duplicated)
+    tx_fifo_count--;
     regs.osr_shift_count = 0;
 }
 
@@ -177,7 +177,7 @@ void PioStateMachine::executeWait()
         {
             u32 index_msb = (index >> 4) & 1; // bit 4
             u32 irq_wait_num = index & 0b111; // The 3 LSBs specify an IRQ index from 0-7. (s3.4.9.2)
-            //If the MSB is set, the sm ID (0…3) is added to the IRQ index, by way of modulo-4 addition on the "two LSBs" (s3.4.9.2)  // TODO:Need spec check
+            //If the MSB is set, the sm ID (0…3) is added to the IRQ index, by way of modulo-4 addition on the "two LSBs" (s3.4.9.2)  TODO:Need spec check
             if (index_msb == 1)
             {
                 u32 index_2lsbs = irq_wait_num & 0b11; // get the 2 LSBs
@@ -210,7 +210,7 @@ void PioStateMachine::executeIn()
 {
     // If autopush enable sm should automatically push the ISR to RX FIFO when the ISR is
     // full (i.e.push_threshold met), but if th Rx FIFO is full the "in" instruction STALL
-    if (push_is_stalling == true)
+    if (push_is_stalling == true)  // TODO:Need function check
     {
         std::cout << "WARN: Push is stalling in 'IN' instruction\n";
         return;
@@ -288,11 +288,12 @@ void PioStateMachine::executeIn()
     // Auto push(if enabled) or stall
     if (settings.in_shift_autopush == true && regs.isr_shift_count >= settings.push_threshold)
     {
-        if (rx_fifo_in_use_count < 4)
+        if (rx_fifo_count < 4)
         {
             push_to_rx_fifo();
             push_is_stalling = false;
-        } else
+        }
+        else
         {
             // stall
             skip_increase_pc = true;
@@ -300,7 +301,6 @@ void PioStateMachine::executeIn()
             push_is_stalling = true;
         }
     }
-
 }
 
 void PioStateMachine::executeOut()
@@ -309,10 +309,84 @@ void PioStateMachine::executeOut()
 
 void PioStateMachine::executePush()
 {
+    // Obtain Instruction fields
+    u32 ifFull = (currentInstruction >> 6) & 1; // bits 6
+    u32 block = (currentInstruction >> 5) & 1; // bits 5
+
+    // Check if there's space for rx fifo
+    if (rx_fifo_count < 4)
+    {
+        // have space
+        // IfFull: If 1, do nothing unless the total input shift count has reached its threshold,
+        // SHIFTCTRL_PUSH_THRESH (the same as for autopush; see Section 3.5.4)
+        if (ifFull)
+        {
+            if (regs.isr_shift_count >= settings.push_threshold)
+                push_to_rx_fifo();
+        }
+        else
+            push_to_rx_fifo();
+    }
+    else
+    {
+        // No space in rx fifo to push (block or skip?)
+        if (block)
+        {
+            // stall (block)
+            skip_increase_pc = true;
+            delay_delay = true;
+            push_is_stalling = true;
+        }
+        else
+        {
+            // not block
+            // continue, but clear isr (s3.4.6.2)
+            push_is_stalling = false;
+            regs.isr = 0;
+        }
+    }
 }
 
 void PioStateMachine::executePull()
 {
+    // Obtain Instruction fields
+    u32 ifEmpty = (currentInstruction >> 6) & 1; // bits 6
+    u32 block = (currentInstruction >> 5) & 1; // bits 5
+
+    // Check if tx fifo is empty (nothing to pull)
+    if (tx_fifo_count != 0)
+    {
+        if (ifEmpty)
+        {
+            // Only pull if the osr counter is larger then the threshold
+            if (regs.osr_shift_count >= settings.pull_threshold)
+                pull_from_tx_fifo();
+        }
+        else
+        {
+            // Pull anyway (overwrite osr content)
+            pull_from_tx_fifo();
+        }
+    }
+    else
+    {
+        // tx fifo is empty (nothing to pull)
+        if (block)
+        {
+            // stall (block)
+            skip_increase_pc = true;
+            delay_delay = true;
+            pull_is_stalling = true;
+        }
+        else
+        {
+            // non-block pull
+            // (s3.4.7.2): A nonblocking PULL on an empty FIFO has the same effect as 'MOV OSR, X'
+            regs.osr = regs.x;
+            pull_is_stalling = false;
+            // LOG('WARN: a non-blocking PULL on an empty FIFO has the same effect as 'MOV OSR, X', continuing\n')
+        }
+    }
 }
 
 void PioStateMachine::executeMov()

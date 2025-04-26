@@ -66,9 +66,9 @@ public:
     void pull_from_tx_fifo();
     std::array<uint32_t, 4> tx_fifo;
     std::array<uint32_t, 4> rx_fifo;
-    int tx_fifo_in_use_count = 0;
-    int rx_fifo_in_use_count = 0;
-    bool push_is_stalling = false;
+    int tx_fifo_count = 0;
+    int rx_fifo_count = 0;
+    bool push_is_stalling = false;  // TODO: use of these variable need check
     bool pull_is_stalling = false;
 
     // IRQs
