@@ -1,6 +1,6 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <doctest/doctest.h>
-#include "../src/PioStateMachine.h"
+#include "../../src/PioStateMachine.h"
 
 uint16_t buildOutInstruction(uint8_t destination, uint8_t bit_count)
 {

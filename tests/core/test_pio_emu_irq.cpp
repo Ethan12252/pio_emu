@@ -1,6 +1,6 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <doctest/doctest.h>
-#include "../src/PioStateMachine.h"
+#include "../../src/PioStateMachine.h"
 
 // Helper function to build IRQ instructions
 uint16_t buildIrqInstruction(bool clear, bool wait, uint8_t index)

@@ -269,7 +269,8 @@ void PioStateMachine::executeIn()
         break;
     case 0b100: // Reserved
     case 0b101:
-        break;
+        // LOG("Unknow 'in' source, continuing/n")
+        return;
     case 0b110: // ISR
         data = regs.isr & mask;
         break;

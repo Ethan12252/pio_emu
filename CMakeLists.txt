@@ -3,11 +3,16 @@ project(pio_emu)
 
 set(CMAKE_CXX_STANDARD 20)
 
+# Common source files
+set(COMMON_SOURCES
+    src/PioStateMachine.cpp
+    src/PioStateMachine.h
+)
+
 # Main executable
 add_executable(pio_emu
-        src/main.cpp
-        src/PioStateMachine.cpp
-        src/PioStateMachine.h
+    src/main.cpp
+    ${COMMON_SOURCES}
 )
 
 # Find required packages
@@ -19,29 +24,28 @@ target_link_libraries(${PROJECT_NAME} PRIVATE fmt::fmt)
 # Enable testing
 enable_testing()
 
-# Add test executable for SET functionality
-add_executable(test_pio_emu_set
-        tests/test_pio_emu_set.cpp
-        src/PioStateMachine.cpp
-        src/PioStateMachine.h
-)
-target_link_libraries(test_pio_emu_set PRIVATE fmt::fmt doctest::doctest)
-add_test(NAME test_pio_emu_set COMMAND test_pio_emu_set)
+# Create tests directory structure if it doesn't exist
+file(MAKE_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/core)
 
-# Add test executable for IRQ functionality
-add_executable(test_pio_emu_irq
-        tests/test_pio_emu_irq.cpp
-        src/PioStateMachine.cpp
-        src/PioStateMachine.h
+# List of all test targets
+set(PIO_TESTS
+    set
+    irq
+    out
+    in
+    # Add more instructions here as needed
+    # mov
+    # jmp
+    # wait
+    # push_pull
 )
-target_link_libraries(test_pio_emu_irq PRIVATE fmt::fmt doctest::doctest)
-add_test(NAME test_pio_emu_irq COMMAND test_pio_emu_irq)
 
-# Add test executable for OUT functionality
-add_executable(test_pio_emu_out
-        tests/test_pio_emu_out.cpp
-        src/PioStateMachine.cpp
-        src/PioStateMachine.h
-)
-target_link_libraries(test_pio_emu_out PRIVATE fmt::fmt doctest::doctest)
-add_test(NAME test_pio_emu_out COMMAND test_pio_emu_out)
+# Create test executables from the list
+foreach(TEST_NAME ${PIO_TESTS})
+    add_executable(test_pio_emu_${TEST_NAME}
+        tests/core/test_pio_emu_${TEST_NAME}.cpp
+        ${COMMON_SOURCES}
+    )
+    target_link_libraries(test_pio_emu_${TEST_NAME} PRIVATE fmt::fmt doctest::doctest)
+    add_test(NAME test_pio_emu_${TEST_NAME} COMMAND test_pio_emu_${TEST_NAME})
+endforeach()
