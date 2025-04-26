@@ -237,6 +237,8 @@ void PioStateMachine::executeIn()
         bitCount = 32; // 32 is encoded as 0b00000
 
     u32 mask = (1 << bitCount) - 1;
+    if (bitCount == 32)
+        mask = 0xff'ff'ff'ff;
     u32 data = 0;
 
     switch (source)
@@ -323,7 +325,7 @@ void PioStateMachine::executeOut()
     u32 bitCount = currentInstruction & 0b1'1111; // bit 4:0
     if (bitCount == 0) // 32 is encoded as 0b000
         bitCount = 32;
-    u32 osrOriginal = regs.osr;  // For EXEC
+    u32 osrOriginal = regs.osr; // For EXEC
 
     // (s3.4.5.2):autopull
     if (settings.autopull_enable)
@@ -348,6 +350,8 @@ void PioStateMachine::executeOut()
     // Get data out of osr
     u32 data = 0;
     u32 mask = (1 << bitCount) - 1;
+    if (bitCount == 32)  // mask calc when bitcount=32 will fail(overflow)
+        mask = 0xff'ff'ff'ff;
     if (settings.out_shift_right)
     {
         // shift right
@@ -409,24 +413,25 @@ void PioStateMachine::executeOut()
                 gpio.pindirs[outPin] = (data & (1 << i)) ? 1 : 0;
             }
 
-        break;
-    case 0b101: // PC
-        jmp_to = data;
-        skip_increase_pc = true;
-        break;
-    case 0b110: // ISR
-        regs.isr = data;
-        regs.isr_shift_count = bitCount;  // TODO: Need spec check (+= bitcount or = bitcount) (s3.2.3.3)
-        break;
-    case 0b111: // EXEC   TODO: Need function check
-        skip_increase_pc = true;
-        skip_delay = true;
-        exec_command = true;
-        currentInstruction = osrOriginal; // Next instruction (we dont increace pc next cycle)
-        break;
-    default:
-        // LOG ERRRO
-        return;
+            break;
+        case 0b101: // PC
+            jmp_to = data;
+            skip_increase_pc = true;
+            break;
+        case 0b110: // ISR
+            regs.isr = data;
+            regs.isr_shift_count = bitCount; // TODO: Need spec check (+= bitcount or = bitcount) (s3.2.3.3)
+            break;
+        case 0b111: // EXEC   TODO: Need function check
+            skip_increase_pc = true;
+            skip_delay = true;
+            exec_command = true;
+            currentInstruction = osrOriginal; // Next instruction (we dont increace pc next cycle)
+            break;
+        default:
+            // LOG ERRRO
+            return;
+        }
     }
 }
 
@@ -648,8 +653,8 @@ void PioStateMachine::executeMov()
 void PioStateMachine::executeIrq()
 {
     // Obtain Instruction fields
-    u32 clear = (currentInstruction >> 5) & 1; // bit 5
-    u32 wait = (currentInstruction >> 6) & 1; // bit 6
+    u32 wait = (currentInstruction >> 5) & 1; // bit 5
+    u32 clear = (currentInstruction >> 6) & 1; // bit 6
     u32 index = currentInstruction & 0b1'1111; // bits 4:0
     u32 index_msb = (index >> 4) & 1; // bit 4
 
@@ -705,7 +710,7 @@ void PioStateMachine::executeSet()
 
     switch (destinition)
     {
-    case 000: // PINS
+    case 0b000: // PINS
         if (settings.set_base == -1)
             std::cout << "WARN: 'set_base' isn't set before use in SET instruction, continuing\n";
         if (settings.set_count == -1)
@@ -719,15 +724,15 @@ void PioStateMachine::executeSet()
             }
         }
         break;
-    case 001: // X
+    case 0b001: // X
         regs.x = data;
         break;
-    case 010: // Y
+    case 0b010: // Y
         regs.y = data;
         break;
-    case 011: // Reserved
+    case 0b011: // Reserved
         break;
-    case 100: // PINDIRS
+    case 0b100: // PINDIRS
         if (settings.set_base == -1)
             std::cout << "WARN: 'set_base' isn't set before use in SET instruction, continuing\n";
         if (settings.set_count == -1)
@@ -741,9 +746,9 @@ void PioStateMachine::executeSet()
             }
         }
         break;
-    case 101: // Reserved
-    case 110:
-    case 111:
+    case 0b101: // Reserved
+    case 0b110:
+    case 0b111:
         break;
     default:
         "WARN: 'set' has unknown destination, continuing\n";
