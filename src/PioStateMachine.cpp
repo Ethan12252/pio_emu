@@ -4,6 +4,29 @@
 
 typedef uint32_t u32;
 
+void PioStateMachine::push_to_rx_fifo()
+{
+    // Push data to the rx fifo (assume already check if there is space)
+    rx_fifo[rx_fifo_in_use_count] = regs.isr;
+    rx_fifo_in_use_count++;
+    regs.isr_shift_count = 0;
+    regs.isr = 0;
+}
+
+void PioStateMachine::pull_from_tx_fifo()
+{
+    // Pull data from tx fifo (assume already check for space)
+    regs.osr = tx_fifo[0];
+    // shift the whole tx fifo
+    for (int i = 0; i < tx_fifo_in_use_count - 1; i++)
+    {
+        tx_fifo[i] = tx_fifo[i + 1];
+    }
+    tx_fifo[tx_fifo_in_use_count - 1] = 0; // clear the last element (got duplicated)
+    tx_fifo_in_use_count--;
+    regs.osr_shift_count = 0;
+}
+
 void PioStateMachine::tick()
 {
 }
@@ -209,7 +232,7 @@ void PioStateMachine::executeIn()
         if (settings.in_base == -1)
         {
             std::cout << "WARN: in_base isn't set before use in 'in pin', continuing\n";
-            break;
+            return;
         }
     // Loop through the pins we need to read
         for (u32 i = 0; i < bitCount; i++)
@@ -240,6 +263,7 @@ void PioStateMachine::executeIn()
         break;
     default:
         std::cout << "WARN: 'IN' has unknown source, continuing\n";
+        return;
     }
 
     // Shift the data into ISR
@@ -258,10 +282,25 @@ void PioStateMachine::executeIn()
 
     // update ISR_shift_count
     regs.isr_shift_count += bitCount;
-    if (regs.isr_shift_count >= settings.push_threshold) // TODO: Need spec check here! (P.338)
-        regs.isr_shift_count = 0;
+    if (regs.isr_shift_count >= 32) // TODO: Need spec check here! (P.338)
+        regs.isr_shift_count = 32;
 
-    // TODO: Auto Push
+    // Auto push(if enabled) or stall
+    if (settings.in_shift_autopush == true && regs.isr_shift_count >= settings.push_threshold)
+    {
+        if (rx_fifo_in_use_count < 4)
+        {
+            push_to_rx_fifo();
+            push_is_stalling = false;
+        } else
+        {
+            // stall
+            skip_increase_pc = true;
+            delay_delay = true;
+            push_is_stalling = true;
+        }
+    }
+
 }
 
 void PioStateMachine::executeOut()
@@ -295,7 +334,7 @@ void PioStateMachine::executeMov()
             std::cout << "WARN: in_base isn't set before use in 'mov dst, pin', continuing\n";
             return;
         }
-        // Loop through the pins we need to read
+    // Loop through the pins we need to read
         for (u32 i = 0; i < 32; i++)
         {
             // Calc the actual GPIO pin number (wrap around if > 31)
@@ -317,7 +356,7 @@ void PioStateMachine::executeMov()
         // TODO:Log unknow source
         return;
     case 0b101: // STATUS
-        data = regs.status;  // Assumes regs.status is pre-configured
+        data = regs.status; // Assumes regs.status is pre-configured
         break;
     case 0b110: //ISR
         data = regs.isr;
@@ -342,7 +381,7 @@ void PioStateMachine::executeMov()
         {
             u32 old_data = data;
             data = 0;
-            for (int i = 0; i < 32; i++)  // function checked
+            for (int i = 0; i < 32; i++) // function checked
             {
                 data |= ((old_data >> i) & 1) << (31 - i);
             }
@@ -390,11 +429,11 @@ void PioStateMachine::executeMov()
         skip_increase_pc = true;
         skip_delay = true;
         exec_command = true;
-        currentInstruction = data;  // Next instruction (we dont increace pc next cycle)
+        currentInstruction = data; // Next instruction (we dont increace pc next cycle)
         break;
     case 0b101: // PC
         skip_increase_pc = true;
-        jmp_to = data & 0b1'1111;  // 0 ~ 32
+        jmp_to = data & 0b1'1111; // 0 ~ 32
         break;
     case 0b110: //ISR
         regs.isr = data;

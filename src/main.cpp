@@ -1,7 +1,7 @@
 #include <fmt/base.h>
-#include <cstdio>
 #include <cstdint>
 #include "PioStateMachine.h"
+
 using u32 = uint32_t;
 
 int main()

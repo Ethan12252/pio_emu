@@ -62,10 +62,12 @@ public:
     } gpio;
 
     // FIFOs
-    std::array<uint32_t, 4> TxFIFO;
-    std::array<uint32_t, 4> RxFIFO;
-    int TxFIFO_in_use_count = 0;
-    int RxFIFO_in_use_count = 0;
+    void push_to_rx_fifo();
+    void pull_from_tx_fifo();
+    std::array<uint32_t, 4> tx_fifo;
+    std::array<uint32_t, 4> rx_fifo;
+    int tx_fifo_in_use_count = 0;
+    int rx_fifo_in_use_count = 0;
     bool push_is_stalling = false;
     bool pull_is_stalling = false;
 
@@ -75,8 +77,7 @@ public:
 
     void tick(); // Foward a clock
     void executeInstruction();
-
-    // private:
+    
     // Instruction handlers
     void executeJmp();
     void executeWait();
