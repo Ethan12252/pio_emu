@@ -48,6 +48,8 @@ public:
         bool out_shift_right = false;
         bool in_shift_autopush = false;
         bool out_shift_autopull = false;
+        bool autopull_enable = false;
+        bool autopush_enable = false;
     } settings;
 
     // GPIO regs (見s3.4.5)

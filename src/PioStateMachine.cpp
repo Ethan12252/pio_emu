@@ -1,6 +1,5 @@
 #include "PioStateMachine.h"
 #include <iostream>
-#include <bit>
 
 typedef uint32_t u32;
 
@@ -24,7 +23,7 @@ void PioStateMachine::pull_from_tx_fifo()
     }
     tx_fifo[tx_fifo_count - 1] = 0; // clear the last element (got duplicated)
     tx_fifo_count--;
-    regs.osr_shift_count = 0;
+    regs.osr_shift_count = 0; // reset the osr_shift_count to 0 (full, nothing had shifted out)
 }
 
 void PioStateMachine::tick()
@@ -81,8 +80,22 @@ void PioStateMachine::executeInstruction()
         std::cout << "ERROR: Invalid instruction opcode\n";
     }
 
-    // When not pull or mov, do autopull (if enabled) (s3.5.4)
-    // TODO: auto pull
+    // --- auto pull ---
+    // When not 'pull' or 'mov', do autopull (if enabled) (s3.5.4.2)
+    bool isOut = (opcode == 0b011);
+    bool isPull = (opcode == 0b100) && !(isPush);
+    bool isMov = (opcode == 0b101);
+    if (settings.autopull_enable && !(isOut || isPull || isMov))
+    {
+        if (regs.osr_shift_count >= settings.pull_threshold)
+        {
+            if (tx_fifo_count > 0) // tx fifo not empty
+            {
+                pull_from_tx_fifo();
+                pull_is_stalling = false;
+            }
+        }
+    }
 }
 
 void PioStateMachine::executeJmp()
@@ -210,7 +223,7 @@ void PioStateMachine::executeIn()
 {
     // If autopush enable sm should automatically push the ISR to RX FIFO when the ISR is
     // full (i.e.push_threshold met), but if th Rx FIFO is full the "in" instruction STALL
-    if (push_is_stalling == true)  // TODO:Need function check
+    if (push_is_stalling == true) // TODO:Need function check
     {
         std::cout << "WARN: Push is stalling in 'IN' instruction\n";
         return;
@@ -305,6 +318,116 @@ void PioStateMachine::executeIn()
 
 void PioStateMachine::executeOut()
 {
+    // Obtain Instruction fields
+    u32 destination = (currentInstruction >> 5) & 0b111; // bit 7:5
+    u32 bitCount = currentInstruction & 0b1'1111; // bit 4:0
+    if (bitCount == 0) // 32 is encoded as 0b000
+        bitCount = 32;
+    u32 osrOriginal = regs.osr;  // For EXEC
+
+    // (s3.4.5.2):autopull
+    if (settings.autopull_enable)
+    {
+        // Check if we shift out enough bit so we have to perform autopull
+        if (regs.osr_shift_count >= settings.pull_threshold) // yes, do autopull
+        {
+            if (tx_fifo_count > 0) // tx fifo not empty
+            {
+                pull_from_tx_fifo();
+            }
+            // stall (P.339): However, it cannot fill an empty OSR and 'OUT' it on the same cycle,
+            //                due to the long logic path this would create.
+            skip_increase_pc = true;
+            delay_delay = true;
+            pull_is_stalling = true;
+            // LOG(warn: pull is stalling in OUT\n)
+            return;
+        }
+    }
+
+    // Get data out of osr
+    u32 data = 0;
+    u32 mask = (1 << bitCount) - 1;
+    if (settings.out_shift_right)
+    {
+        // shift right
+        // take bitCount from lsb
+        data = regs.osr & mask;
+        regs.osr = regs.osr >> bitCount;
+    }
+    else
+    {
+        // shit left
+        // take bitCount from msb
+        mask = mask << (32 - bitCount);
+        data = regs.osr & mask;
+        data = data >> (32 - bitCount);
+        regs.osr = regs.osr << bitCount;
+    }
+
+    //update the shift counter
+    regs.osr_shift_count += bitCount;
+    if (regs.osr_shift_count > 32)
+        regs.osr_shift_count = 32; // (s3.4.5.2) saturating at 32.
+
+    // Put the data to destination
+    switch (destination)
+    {
+    case 0b000: // PINS, use 'out' mapping
+        if (settings.out_base == -1)
+        {
+            std::cout << "WARN: out_base isn't set before use in 'out pin', continuing\n";
+            return;
+        }
+    // Loop through the pins we need to set
+        for (u32 i = 0; i < bitCount; i++)
+        {
+            // Calc the actual GPIO pin number (wrap around if > 31)
+            u32 writePinNumber = (settings.out_base + i) % 32;
+            gpio.out_data[writePinNumber] = (data & (1 << i)) ? 1 : 0;
+        }
+        break;
+    case 0b001: // X
+        regs.x = data;
+        break;
+    case 0b010: // Y
+        regs.y = data;
+        break;
+    case 0b011: // NULL (discard data)
+        break;
+    case 0b100: // PINDIRS
+        if (settings.out_base == -1)
+        {
+            std::cout << "WARN: 'out_base' isn't set before use in 'out' instruction, continuing\n";
+            return;
+        }
+        else
+        {
+            for (int i = 0; i < bitCount; i++)
+            {
+                u32 outPin = (settings.out_base + i) % 32;
+                gpio.pindirs[outPin] = (data & (1 << i)) ? 1 : 0;
+            }
+
+        break;
+    case 0b101: // PC
+        jmp_to = data;
+        skip_increase_pc = true;
+        break;
+    case 0b110: // ISR
+        regs.isr = data;
+        regs.isr_shift_count = bitCount;  // TODO: Need spec check (+= bitcount or = bitcount) (s3.2.3.3)
+        break;
+    case 0b111: // EXEC   TODO: Need function check
+        skip_increase_pc = true;
+        skip_delay = true;
+        exec_command = true;
+        currentInstruction = osrOriginal; // Next instruction (we dont increace pc next cycle)
+        break;
+    default:
+        // LOG ERRRO
+        return;
+    }
 }
 
 void PioStateMachine::executePush()
