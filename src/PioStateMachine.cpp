@@ -28,6 +28,148 @@ void PioStateMachine::pull_from_tx_fifo()
 
 void PioStateMachine::tick()
 {
+    // Flag to track if we should skip execution due to delay
+    bool skipDueToDelay = false;
+
+    // Handle delays - check if we have a pending delayed delay
+    if (!delay_delay)
+    {
+        // If a delay is active, decrement it and skip execution for this cycle
+        if (regs.delay > 0)
+        {
+            regs.delay--;
+            skipDueToDelay = true;
+        }
+    }
+
+    // Execute instruction if not skipping due to delay
+    if (!skipDueToDelay)
+    {
+        delay_delay = false;
+
+        // Handle program counter updates
+        if (skip_increase_pc)
+        {
+            // Don't increment PC if flag is set (e.g., for jumps or waits)
+            skip_increase_pc = false;
+
+            if (jmp_to >= 0)
+            {
+                // Handle jump: set PC to jump destination
+                regs.pc = jmp_to;
+                jmp_to = -1; // Reset jump target
+            }
+        }
+        else
+        {
+            // Normal PC increment
+            regs.pc++;
+
+            // Handle PC wrap-around if needed
+            if (settings.wrap_enable)
+            {
+                if (regs.pc == settings.wrap + 1)
+                {
+                    regs.pc = settings.wrap_target;
+                }
+            }
+        }
+
+        // Fetch and execute the next instruction
+        currentInstruction = instructionMemory[regs.pc];
+
+        // Skip delay if needed (for OUT EXEC and MOV EXEC)
+        // Delay cycles on the initial OUT/MOV are ignored for EXEC
+        if (!skip_delay)
+        {
+            // TODO: Apply delay from instruction if needed
+            // Extract delay bits from instruction based on settings
+            uint32_t delayBitCount = 5 - settings.sideset_count - settings.sideset_opt;
+            if (delayBitCount > 0)
+            {
+                // Calculate delay value (depends on instruction format)
+                // This is a placeholder - implement actual delay extraction
+                // uint32_t delay = (currentInstruction >> X) & ((1 << delayBitCount) - 1);
+                // regs.delay = delay;
+            }
+        }
+        else
+        {
+            skip_delay = false; // Reset flag after using it
+        }
+
+        // Execute the instruction
+        executeInstruction();
+
+        // Reset exec_command flag if it was set
+        if (exec_command)
+        {
+            exec_command = false;
+        }
+
+        // Update status register based on FIFO levels (if needed)
+        /*
+        if (statusSel == 0)
+        {
+            // Status based on TX FIFO level
+            if (tx_fifo_count < fifoLevelN)
+            {
+                regs.status = -1; // All ones
+            }
+            else
+            {
+                regs.status = 0; // All zeros
+            }
+        }
+        else
+        {
+            // Status based on RX FIFO level
+            if (rx_fifo_count < fifoLevelN)
+            {
+                regs.status = -1; // All ones
+            }
+            else
+            {
+                regs.status = 0; // All zeros
+            }
+        }
+    }*/
+
+        // Update GPIO pins based on current state
+        // This should reflect changes from set, out, and sideset operations
+        for (int i = 0; i < 32; i++)
+        {
+            // Priority order: sideset > set > out
+            if (gpio.sideset[i] != -1)
+            {
+                gpio.raw_data[i] = gpio.sideset[i];
+            }
+            else if (gpio.set_data[i] != -1)
+            {
+                gpio.raw_data[i] = gpio.set_data[i];
+            }
+            else if (gpio.out_data[i] != -1)
+            {
+                gpio.raw_data[i] = gpio.out_data[i];
+            }
+
+            // Reset pin change flags
+            gpio.sideset[i] = -1;
+            gpio.set_data[i] = -1;
+            gpio.out_data[i] = -1;
+        }
+
+        // Check for resolved stalls
+        if (push_is_stalling && rx_fifo_count < 4)
+        {
+            push_is_stalling = false;
+        }
+
+        if (pull_is_stalling && tx_fifo_count > 0)
+        {
+            pull_is_stalling = false;
+        }
+    }
 }
 
 void PioStateMachine::doSideSet()
@@ -323,7 +465,7 @@ void PioStateMachine::executeOut()
     u32 bitCount = currentInstruction & 0b1'1111; // bit 4:0
     if (bitCount == 0) // 32 is encoded as 0b000
         bitCount = 32;
-    u32 osrOriginal = regs.osr;  // For EXEC
+    u32 osrOriginal = regs.osr; // For EXEC
 
     // (s3.4.5.2):autopull
     if (settings.autopull_enable)
@@ -409,24 +551,25 @@ void PioStateMachine::executeOut()
                 gpio.pindirs[outPin] = (data & (1 << i)) ? 1 : 0;
             }
 
-        break;
-    case 0b101: // PC
-        jmp_to = data;
-        skip_increase_pc = true;
-        break;
-    case 0b110: // ISR
-        regs.isr = data;
-        regs.isr_shift_count = bitCount;  // TODO: Need spec check (+= bitcount or = bitcount) (s3.2.3.3)
-        break;
-    case 0b111: // EXEC   TODO: Need function check
-        skip_increase_pc = true;
-        skip_delay = true;
-        exec_command = true;
-        currentInstruction = osrOriginal; // Next instruction (we dont increace pc next cycle)
-        break;
-    default:
-        // LOG ERRRO
-        return;
+            break;
+        case 0b101: // PC
+            jmp_to = data;
+            skip_increase_pc = true;
+            break;
+        case 0b110: // ISR
+            regs.isr = data;
+            regs.isr_shift_count = bitCount; // TODO: Need spec check (+= bitcount or = bitcount) (s3.2.3.3)
+            break;
+        case 0b111: // EXEC   TODO: Need function check
+            skip_increase_pc = true;
+            skip_delay = true;
+            exec_command = true;
+            currentInstruction = osrOriginal; // Next instruction (we dont increace pc next cycle)
+            break;
+        default:
+            // LOG ERRRO
+            return;
+        }
     }
 }
 
@@ -705,7 +848,7 @@ void PioStateMachine::executeSet()
 
     switch (destinition)
     {
-    case 000: // PINS
+    case 0b000: // PINS
         if (settings.set_base == -1)
             std::cout << "WARN: 'set_base' isn't set before use in SET instruction, continuing\n";
         if (settings.set_count == -1)
@@ -719,15 +862,15 @@ void PioStateMachine::executeSet()
             }
         }
         break;
-    case 001: // X
+    case 0b001: // X
         regs.x = data;
         break;
-    case 010: // Y
+    case 0b010: // Y
         regs.y = data;
         break;
-    case 011: // Reserved
+    case 0b011: // Reserved
         break;
-    case 100: // PINDIRS
+    case 0b100: // PINDIRS
         if (settings.set_base == -1)
             std::cout << "WARN: 'set_base' isn't set before use in SET instruction, continuing\n";
         if (settings.set_count == -1)
@@ -741,9 +884,9 @@ void PioStateMachine::executeSet()
             }
         }
         break;
-    case 101: // Reserved
-    case 110:
-    case 111:
+    case 0b101: // Reserved
+    case 0b110:
+    case 0b111:
         break;
     default:
         "WARN: 'set' has unknown destination, continuing\n";

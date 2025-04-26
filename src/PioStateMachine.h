@@ -50,6 +50,9 @@ public:
         bool out_shift_autopull = false;
         bool autopull_enable = false;
         bool autopush_enable = false;
+        bool wrap_enable = false;
+        int wrap = 0;
+        int wrap_target = 31;
     } settings;
 
     // GPIO regs (見s3.4.5)
