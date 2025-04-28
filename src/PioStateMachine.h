@@ -13,9 +13,11 @@ public:
     // Runtime emu flags
     int jmp_to = -1;
     bool skip_increase_pc = false;
-    bool delay_delay = false;  // For some instruction delays need to be postponed to after the instruction (e.g. wait) has finished
-    bool skip_delay = false;   // (s3.4.5.2) for 'out exec' and 'mov exec' "Delay cycles on the initial OUT are ignored"
-    bool exec_command = false; // for 'out exec' and 'mov exec', might alter the logic for get nextInstruction for memory
+    bool delay_delay = false;
+    // For some instruction delays need to be postponed to after the instruction (e.g. wait) has finished
+    bool skip_delay = false; // (s3.4.5.2) for 'out exec' and 'mov exec' "Delay cycles on the initial OUT are ignored"
+    bool exec_command = false;
+    // for 'out exec' and 'mov exec', might alter the logic for get nextInstruction for memory
 
     // State registers
     struct Registers
@@ -37,6 +39,8 @@ public:
         int sideset_count = 0;
         bool sideset_opt = false;
         bool sideset_pindirs = false;
+        int sideset_base = -1;
+        int sideset_count = 0;
         int in_base = -1;
         int out_base = -1;
         int set_base = -1;
@@ -61,7 +65,7 @@ public:
         std::array<int8_t, 32> set_data;
         std::array<int8_t, 32> out_data;
         std::array<int8_t, 32> external_data;
-        std::array<int8_t, 32> sideset;
+        std::array<int8_t, 32> sideset_data;
         std::array<int8_t, 32> pindirs;
     } gpio;
 
@@ -72,16 +76,16 @@ public:
     std::array<uint32_t, 4> rx_fifo;
     int tx_fifo_count = 0;
     int rx_fifo_count = 0;
-    bool push_is_stalling = false;  // TODO: use of these variable need check
+    bool push_is_stalling = false; // TODO: use of these variable need check
     bool pull_is_stalling = false;
 
     // IRQs
     std::array<bool, 8> irq_flags;
     bool irq_is_waiting = false;
 
-    void tick(); // Foward a clock
     void executeInstruction();
-    
+    void tick(); // Foward a clock
+
     // Instruction handlers
     void executeJmp();
     void executeWait();
@@ -93,6 +97,6 @@ public:
     void executeIrq();
     void executeSet();
 
-    void doSideSet();
+    void doSideSet(uint32_t delay_side_set_field);
     void setAllGpio();
 };

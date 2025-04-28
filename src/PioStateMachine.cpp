@@ -29,8 +29,36 @@ void PioStateMachine::tick()
 {
 }
 
-void PioStateMachine::doSideSet()
+void PioStateMachine::doSideSet(u32 delay_side_set_field)
 {
+    if (settings.sideset_opt) // sideset optional bit enable
+    {
+        if ((delay_side_set_field >> 4) & 1) // check if msb is set (do sideset)
+        {
+            for (int i = 0; i < settings.sideset_count - 1; i++) // sideset_count - 1 (opt bit)
+            {
+                u32 bitVal = (delay_side_set_field >> i) & 1;
+                u32 pinNum = (settings.sideset_base + i) % 32;
+                if (settings.sideset_pindirs == true) // to pindir
+                    gpio.pindirs[pinNum] = bitVal;
+                else
+                    gpio.sideset_data[pinNum] = bitVal;
+            }
+        }
+    }
+    else // sideset is needed for every instruction
+    {
+        for (int i = 0; i < settings.sideset_count; i++) // full sideset_count
+        {
+            u32 bitVal = (delay_side_set_field >> i) & 1;
+            u32 pinNum = (settings.sideset_base + i) % 32;
+            if (settings.sideset_pindirs == true) // to pindir
+                gpio.pindirs[pinNum] = bitVal;
+            else
+                gpio.sideset_data[pinNum] = bitVal;
+        }
+    }
+    setAllGpio();  // TODO:Need function check!!
 }
 
 void PioStateMachine::setAllGpio() // TODO: Check with 'mov' 'set' 'out' instruction
@@ -68,14 +96,14 @@ void PioStateMachine::setAllGpio() // TODO: Check with 'mov' 'set' 'out' instruc
     for (int i = 0; i < 32; i++)
     {
         // side-set
-        if (gpio.sideset[i] == -1) // check modified pins
+        if (gpio.sideset_data[i] == -1) // check modified pins
             continue;
         else // modified
         {
             if (gpio.pindirs[i] == 0) // pindir set to output
-                gpio.raw_data[i] = gpio.sideset[i];
+                gpio.raw_data[i] = gpio.sideset_data[i];
             else
-            LOG_WARNING("GPIO pin set by 'side-set' is not an output, continuing");
+                LOG_WARNING("GPIO pin set by 'side-set' is not an output, continuing");
         }
     }
 
@@ -92,7 +120,8 @@ void PioStateMachine::setAllGpio() // TODO: Check with 'mov' 'set' 'out' instruc
             else
             {
                 // The pin is configured as an output but external input takes priority
-                LOG_WARNING("External input applied to GPIO [pin] but it is configured as output (external wins!), continuing");
+                LOG_WARNING(
+                    "External input applied to GPIO [pin] but it is configured as output (external wins!), continuing");
             }
         }
     }
@@ -103,12 +132,10 @@ void PioStateMachine::executeInstruction()
     // Get Opcode field (15:13)
     u32 opcode = (currentInstruction & 0xe0) >> 13;
     u32 isPush = (currentInstruction >> 7) & 1u; // bit 7 = 0 為 PUSH, = 1 為 PULL
-
-    // Calculate the delay/sideset bits (5 total) (見s3.5.1 和 P.319)
-    u32 delayBitCount = 5 - settings.sideset_count - settings.sideset_opt;
+    u32 delay_side_set_field = (currentInstruction >> 8) & 0b11111; // bit 12:8
 
     // Do side set (s3.5.1: Sideset take place before the instrucion)
-    PioStateMachine::doSideSet();
+    PioStateMachine::doSideSet(delay_side_set_field);
 
     switch (opcode)
     {
