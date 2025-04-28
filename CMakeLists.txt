@@ -5,14 +5,16 @@ set(CMAKE_CXX_STANDARD 20)
 
 # Common source files
 set(COMMON_SOURCES
-    src/PioStateMachine.cpp
-    src/PioStateMachine.h
+        src/PioStateMachine.cpp
+        src/PioStateMachine.h
+        src/logger/Logger.cpp
+        src/logger/Logger.h
 )
 
 # Main executable
 add_executable(pio_emu
-    src/main.cpp
-    ${COMMON_SOURCES}
+        src/main.cpp
+        ${COMMON_SOURCES}
 )
 
 # Find required packages
@@ -29,23 +31,31 @@ file(MAKE_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/core)
 
 # List of all test targets
 set(PIO_TESTS
-    set
-    irq
-    out
-    in
-    # Add more instructions here as needed
-    # mov
-    # jmp
-    # wait
-    # push_pull
+        set
+        irq
+        out
+        in
+        # Add more instructions here as needed
+        # mov
+        # jmp
+        # wait
+        # push_pull
 )
 
 # Create test executables from the list
-foreach(TEST_NAME ${PIO_TESTS})
+foreach (TEST_NAME ${PIO_TESTS})
     add_executable(test_pio_emu_${TEST_NAME}
-        tests/core/test_pio_emu_${TEST_NAME}.cpp
-        ${COMMON_SOURCES}
+            tests/core/test_pio_emu_${TEST_NAME}.cpp
+            ${COMMON_SOURCES}
     )
     target_link_libraries(test_pio_emu_${TEST_NAME} PRIVATE fmt::fmt doctest::doctest)
     add_test(NAME test_pio_emu_${TEST_NAME} COMMAND test_pio_emu_${TEST_NAME})
-endforeach()
+endforeach ()
+
+# Logger test executable
+add_executable(test_logger
+        src/logger/logger_test.cpp
+        src/logger/Logger.cpp
+        src/logger/Logger.h
+)
+target_link_libraries(test_logger PRIVATE fmt::fmt)

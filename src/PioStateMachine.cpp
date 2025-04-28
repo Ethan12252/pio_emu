@@ -34,6 +34,77 @@ void PioStateMachine::doSideSet()
 {
 }
 
+void PioStateMachine::setAllGpio() // TODO: Check with 'mov' 'set' 'out' instruction
+{
+    // GPIO Priority: 1.external  2.side-set  3.out/set
+    // s3.5.6 : If a side-set overlaps with an OUT/SET performed by that state machine on the same cycle,
+    //          the side-set takes precedencein the overlapping region.
+
+    // First 'out' and 'set' mapping (lowest priority)
+    for (int i = 0; i < 32; i++)
+    {
+        // out
+        if (gpio.out_data[i] == -1) // check modified pins
+            continue;
+        else // modified
+        {
+            if (gpio.pindirs[i] == 0) // pindir set to output
+                gpio.raw_data[i] = gpio.out_data[i];
+            else
+            {
+                //  Log warning: "GPIO pin set by 'out' is not an output, continuing"
+            }
+        }
+        // set
+        if (gpio.set_data[i] == -1) // check modified pins
+            continue;
+        else // modified
+        {
+            if (gpio.pindirs[i] == 0) // pindir set to output
+                gpio.raw_data[i] = gpio.set_data[i];
+            else
+            {
+                //  Log warning: "GPIO pinset by 'set' is not an output, continuing"
+            }
+        }
+    }
+
+    // Second 'side-set' mapping (medium priority)
+    for (int i = 0; i < 32; i++)
+    {
+        // side-set
+        if (gpio.sideset[i] == -1) // check modified pins
+            continue;
+        else // modified
+        {
+            if (gpio.pindirs[i] == 0) // pindir set to output
+                gpio.raw_data[i] = gpio.sideset[i];
+            else
+            {
+                //  Log warning: "GPIO pin set by 'side-set' is not an output, continuing"
+            }
+        }
+    }
+
+    // Finally, handle externally driven pins (highest priority)
+    for (int i = 0; i < 32; i++)
+    {
+        // side-set
+        if (gpio.external_data[i] == -1) // check modified pins
+            continue;
+        else // modified
+        {
+            if (gpio.pindirs[i] != 1) // pindir is not set to input (should not )
+                gpio.raw_data[i] = gpio.external_data[i];
+            else
+            {
+                // The pin is configured as an output but external input takes priority
+                // Log warning: "External input applied to GPIO [pin] but it is configured as output (external wins!), continuing"
+            }
+        }
+    }
+}
+
 void PioStateMachine::executeInstruction()
 {
     // Get Opcode field (15:13)
@@ -351,7 +422,7 @@ void PioStateMachine::executeOut()
     // Get data out of osr
     u32 data = 0;
     u32 mask = (1 << bitCount) - 1;
-    if (bitCount == 32)  // mask calc when bitcount=32 will fail(overflow)
+    if (bitCount == 32) // mask calc when bitcount=32 will fail(overflow)
         mask = 0xff'ff'ff'ff;
     if (settings.out_shift_right)
     {

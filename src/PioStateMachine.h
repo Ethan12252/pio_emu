@@ -59,6 +59,7 @@ public:
         std::array<int8_t, 32> raw_data;
         std::array<int8_t, 32> set_data;
         std::array<int8_t, 32> out_data;
+        std::array<int8_t, 32> external_data;
         std::array<int8_t, 32> sideset;
         std::array<int8_t, 32> pindirs;
     } gpio;
@@ -92,4 +93,5 @@ public:
     void executeSet();
 
     void doSideSet();
+    void setAllGpio();
 };

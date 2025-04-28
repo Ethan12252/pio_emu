@@ -4,7 +4,7 @@
 
 uint16_t buildOutInstruction(uint8_t destination, uint8_t bit_count)
 {
-    // OUT encoding: 0 1 1| Delay/side-set |Destination |Bit count
+    // OUT opcode: 0 1 1| Delay/side-set |Destination |Bit count
     uint8_t encoded_bit_count = bit_count == 32 ? 0 : bit_count;
     return (0b011 << 13) | (destination << 5) | encoded_bit_count;
 }
