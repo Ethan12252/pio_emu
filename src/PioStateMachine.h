@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <array>
 #include <vector>
+#include "Logger/Logger.h"
 
 class PioStateMachine
 {

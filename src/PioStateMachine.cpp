@@ -1,5 +1,4 @@
 #include "PioStateMachine.h"
-#include <iostream>
 
 typedef uint32_t u32;
 
@@ -51,9 +50,7 @@ void PioStateMachine::setAllGpio() // TODO: Check with 'mov' 'set' 'out' instruc
             if (gpio.pindirs[i] == 0) // pindir set to output
                 gpio.raw_data[i] = gpio.out_data[i];
             else
-            {
-                //  Log warning: "GPIO pin set by 'out' is not an output, continuing"
-            }
+                LOG_WARNING("GPIO pin set by 'out' is not an output, continuing");
         }
         // set
         if (gpio.set_data[i] == -1) // check modified pins
@@ -63,9 +60,7 @@ void PioStateMachine::setAllGpio() // TODO: Check with 'mov' 'set' 'out' instruc
             if (gpio.pindirs[i] == 0) // pindir set to output
                 gpio.raw_data[i] = gpio.set_data[i];
             else
-            {
-                //  Log warning: "GPIO pinset by 'set' is not an output, continuing"
-            }
+                LOG_WARNING("GPIO pin set by 'set' is not an output, continuing");
         }
     }
 
@@ -80,9 +75,7 @@ void PioStateMachine::setAllGpio() // TODO: Check with 'mov' 'set' 'out' instruc
             if (gpio.pindirs[i] == 0) // pindir set to output
                 gpio.raw_data[i] = gpio.sideset[i];
             else
-            {
-                //  Log warning: "GPIO pin set by 'side-set' is not an output, continuing"
-            }
+            LOG_WARNING("GPIO pin set by 'side-set' is not an output, continuing");
         }
     }
 
@@ -99,7 +92,7 @@ void PioStateMachine::setAllGpio() // TODO: Check with 'mov' 'set' 'out' instruc
             else
             {
                 // The pin is configured as an output but external input takes priority
-                // Log warning: "External input applied to GPIO [pin] but it is configured as output (external wins!), continuing"
+                LOG_WARNING("External input applied to GPIO [pin] but it is configured as output (external wins!), continuing");
             }
         }
     }
@@ -147,8 +140,7 @@ void PioStateMachine::executeInstruction()
         PioStateMachine::executeSet();
         break;
     default:
-        // Error: Unknow instruction
-        std::cout << "ERROR: Invalid instruction opcode\n";
+        LOG_ERROR("Invalid instruction opcode");
     }
 
     // --- auto pull ---
@@ -210,7 +202,7 @@ void PioStateMachine::executeJmp()
     case 0b110: // PIN: branch on input pin
         if (settings.jmp_pin == -1) // jmp_pin not set
         {
-            std::cout << "WARN: jmp_pin isn't set before use in JMP pin, continuing";
+            LOG_WARNING("'jmp_pin' isn't set before use in JMP pin, continuing");
             break;
         }
         if (gpio.raw_data[settings.jmp_pin] == 1)
@@ -221,8 +213,7 @@ void PioStateMachine::executeJmp()
             doJump = true;
         break;
     default:
-        // ERROR: Invalid condition
-        std::cout << "ERROR: Invalid Jmp condition\n";
+        LOG_ERROR("Invalid Jmp condition");
     }
 
     // Do jump
@@ -250,7 +241,7 @@ void PioStateMachine::executeWait()
     case 0b01: // PIN: sm's input io mapping, index select which of the mapped bit to wait
         if (settings.in_base == -1)
         {
-            std::cout << "WARN: in_base isn't set before use in wait pin, continuing";
+            LOG_WARNING("in_base isn't set before use in wait pin, continuing");
             break;
         }
     // pin is selected by adding Index to the PINCTRL_IN_BASE configuration, modulo 32 (s3.4.3.2)
@@ -278,8 +269,7 @@ void PioStateMachine::executeWait()
     case 0b11: // Reserved
         break;
     default:
-        // ERROR: Invalid wait source
-        std::cout << "ERROR: Invalid wait source\n";
+        LOG_ERROR("Invalid wait source");
     }
 
     if (condIsNotMet == true)
@@ -296,7 +286,7 @@ void PioStateMachine::executeIn()
     // full (i.e.push_threshold met), but if th Rx FIFO is full the "in" instruction STALL
     if (push_is_stalling == true) // TODO:Need function check
     {
-        std::cout << "WARN: Push is stalling in 'IN' instruction\n";
+        LOG_INFO("Push is stalling in 'IN' instruction");
         return;
     }
 
@@ -317,7 +307,7 @@ void PioStateMachine::executeIn()
     case 0b000: // PINS, use in mapping (PINCTRL_IN_BASE)
         if (settings.in_base == -1)
         {
-            std::cout << "WARN: in_base isn't set before use in 'in pin', continuing\n";
+            LOG_WARNING("'in_base' isn't set before use in 'in pin', continuing");
             return;
         }
     // Loop through the pins we need to read
@@ -340,7 +330,7 @@ void PioStateMachine::executeIn()
         break;
     case 0b100: // Reserved
     case 0b101:
-        // LOG("Unknow 'in' source, continuing/n")
+
         return;
     case 0b110: // ISR
         data = regs.isr & mask;
@@ -349,7 +339,7 @@ void PioStateMachine::executeIn()
         data = regs.osr & mask;
         break;
     default:
-        std::cout << "WARN: 'IN' has unknown source, continuing\n";
+        LOG_ERROR("'IN' has unknown source, continuing");
         return;
     }
 
@@ -414,7 +404,7 @@ void PioStateMachine::executeOut()
             skip_increase_pc = true;
             delay_delay = true;
             pull_is_stalling = true;
-            // LOG(warn: pull is stalling in OUT\n)
+            LOG_WARNING("'pull' is stalling in OUT");
             return;
         }
     }
@@ -452,7 +442,7 @@ void PioStateMachine::executeOut()
     case 0b000: // PINS, use 'out' mapping
         if (settings.out_base == -1)
         {
-            std::cout << "WARN: out_base isn't set before use in 'out pin', continuing\n";
+            LOG_WARNING("'out_base' isn't set before use in 'out pin', continuing");
             return;
         }
     // Loop through the pins we need to set
@@ -474,7 +464,7 @@ void PioStateMachine::executeOut()
     case 0b100: // PINDIRS
         if (settings.out_base == -1)
         {
-            std::cout << "WARN: 'out_base' isn't set before use in 'out' instruction, continuing\n";
+            LOG_WARNING("'out_base' isn't set before use in 'out' instruction, continuing");
             return;
         }
         else
@@ -501,7 +491,7 @@ void PioStateMachine::executeOut()
             currentInstruction = osrOriginal; // Next instruction (we dont increace pc next cycle)
             break;
         default:
-            // LOG ERRRO
+            LOG_ERROR("'out' have unknow destination");
             return;
         }
     }
@@ -584,7 +574,7 @@ void PioStateMachine::executePull()
             // (s3.4.7.2): A nonblocking PULL on an empty FIFO has the same effect as 'MOV OSR, X'
             regs.osr = regs.x;
             pull_is_stalling = false;
-            // LOG('WARN: a non-blocking PULL on an empty FIFO has the same effect as 'MOV OSR, X', continuing\n')
+            LOG_INFO("A non-blocking PULL on an empty FIFO has the same effect as 'MOV OSR, X', continuing");
         }
     }
 }
@@ -605,7 +595,7 @@ void PioStateMachine::executeMov()
     case 0b000: // PINS (use 'in' mapping)
         if (settings.in_base == -1)
         {
-            std::cout << "WARN: in_base isn't set before use in 'mov dst, pin', continuing\n";
+            LOG_WARNING("'in_base' isn't set before use in 'mov dst, pin', continuing");
             return;
         }
     // Loop through the pins we need to read
@@ -627,7 +617,7 @@ void PioStateMachine::executeMov()
         data = 0;
         break;
     case 0b100: //Reserved
-        // TODO:Log unknow source
+        LOG_ERROR("'mov' on Reserved source");
         return;
     case 0b101: // STATUS
         data = regs.status; // Assumes regs.status is pre-configured
@@ -638,8 +628,8 @@ void PioStateMachine::executeMov()
     case 0b111: // OSR
         data = regs.osr;
         break;
-    //default:
-    // TODO: Log unknow source
+    default:
+        LOG_ERROR("'mov' have unknow source");
     }
 
     // --- Operation ---
@@ -663,7 +653,8 @@ void PioStateMachine::executeMov()
         }
     case 0b11: // reserved
         break;
-    //TODO: add default to log unknow option
+    default:
+        LOG_ERROR("'mov' have unknow source");
     }
 
     // --- Destination ---
@@ -673,12 +664,12 @@ void PioStateMachine::executeMov()
     case 0b000: // PINS (use 'out' mapping)
         if (settings.out_base == -1)
         {
-            std::cout << "WARN: out_base isn't set before use in 'mov pin, src, continuing\n";
+            LOG_WARNING("'out_base' isn't set before use in 'mov pin, continuing");
             return;
         }
         if (settings.out_count == -1)
         {
-            std::cout << "WARN: out_count isn't set before use in 'mov pin, src, continuing\n";
+            LOG_WARNING("'out_count' isn't set before use in 'mov pin, continuing");
             return;
         }
     // Loop through the pins we need to write
@@ -697,7 +688,7 @@ void PioStateMachine::executeMov()
         regs.y = data;
         break;
     case 0b011: // Reserved
-        // TODO:Log unknow source
+        LOG_ERROR("'mov' on Reserved destination");
         return;
     case 0b100: // EXEC  TODO: Need function check!!
         skip_increase_pc = true;
@@ -717,8 +708,8 @@ void PioStateMachine::executeMov()
         regs.osr = data;
         regs.osr_shift_count = 0;
         break;
-    //default:
-    // TODO: Log unknow dest
+    default:
+        LOG_ERROR("'mov' have unknow destnition");
     }
 }
 
@@ -784,9 +775,9 @@ void PioStateMachine::executeSet()
     {
     case 0b000: // PINS
         if (settings.set_base == -1)
-            std::cout << "WARN: 'set_base' isn't set before use in SET instruction, continuing\n";
+            LOG_WARNING("'set_base' isn't set before use in SET instruction, continuing");
         if (settings.set_count == -1)
-            std::cout << "WARN: 'set_count' isn't set before use in SET instruction, continuing\n";
+            LOG_WARNING("'set_count' isn't set before use in SET instruction, continuing");
         else
         {
             for (int i = 0; i < settings.set_count; i++)
@@ -806,9 +797,9 @@ void PioStateMachine::executeSet()
         break;
     case 0b100: // PINDIRS
         if (settings.set_base == -1)
-            std::cout << "WARN: 'set_base' isn't set before use in SET instruction, continuing\n";
+            LOG_WARNING("'set_base' isn't set before use in SET instruction, continuing");
         if (settings.set_count == -1)
-            std::cout << "WARN: 'set_count' isn't set before use in SET instruction, continuing\n";
+            LOG_WARNING("'set_count' isn't set before use in SET instruction, continuing");
         else
         {
             for (int i = 0; i < settings.set_count; i++)
@@ -823,6 +814,6 @@ void PioStateMachine::executeSet()
     case 0b111:
         break;
     default:
-        "WARN: 'set' has unknown destination, continuing\n";
+        LOG_ERROR("'set' has unknown destination, continuing");
     }
 }

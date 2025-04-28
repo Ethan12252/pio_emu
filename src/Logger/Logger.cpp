@@ -2,6 +2,8 @@
 #include <fmt/core.h>
 #include <fmt/color.h>
 
+// TODO: Maybe rewrite in Singleton? and add locks?
+
 Logger::Logger() :
     currentLevel_(LogLevel::INFO),
     consoleOutput_(true),
@@ -51,9 +53,7 @@ void Logger::setLogFile(const std::string& filename)
 void Logger::log(LogLevel level, const std::string& message)
 {
     if (level < currentLevel_)
-    {
         return;
-    }
 
     std::string levelStr;
     fmt::color textColor = fmt::color::white;
@@ -62,15 +62,15 @@ void Logger::log(LogLevel level, const std::string& message)
     {
     case LogLevel::DEBUG:
         levelStr = "DEBUG";
-        textColor = fmt::color::cyan;
+        textColor = fmt::color::light_blue;
         break;
     case LogLevel::INFO:
         levelStr = "INFO";
-        textColor = fmt::color::green;
+        textColor = fmt::color::light_green;
         break;
     case LogLevel::WARNING:
         levelStr = "WARNING";
-        textColor = fmt::color::yellow;
+        textColor = fmt::color::green_yellow;
         break;
     case LogLevel::ERROR:
         levelStr = "ERROR";
@@ -78,7 +78,7 @@ void Logger::log(LogLevel level, const std::string& message)
         break;
     case LogLevel::FATAL:
         levelStr = "FATAL";
-        textColor = fmt::color::purple;
+        textColor = fmt::color::magenta;
         break;
     }
 
@@ -86,7 +86,6 @@ void Logger::log(LogLevel level, const std::string& message)
     
     if (consoleOutput_)
     {
-        // Print colored message to console
         fmt::print(fg(textColor), "[{}] {}\n", levelStr, message);
     }
 
