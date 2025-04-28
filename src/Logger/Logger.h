@@ -4,19 +4,20 @@
 #include <fmt/core.h>
 #include <fmt/color.h>
 
-// default level: info
-enum class LogLevel
-{
-    DEBUG,
-    INFO,
-    WARNING,
-    ERROR,
-    FATAL
-};
 
 class Logger
 {
 public:
+    // default level: info
+    enum class LogLevel
+    {
+        LEVEL_DEBUG,
+        LEVEL_INFO,
+        LEVEL_ERROR,
+        LEVEL_WARNING,
+        LEVEL_FATAL
+    };
+
     Logger();
     ~Logger();
 
@@ -53,4 +54,3 @@ inline Logger logger;
 #define LOG_WARNING_FMT(fmt_str, ...) logger.warning(::fmt::format(fmt_str, __VA_ARGS__))
 #define LOG_ERROR_FMT(fmt_str, ...) logger.error(::fmt::format(fmt_str, __VA_ARGS__))
 #define LOG_FATAL_FMT(fmt_str, ...) logger.fatal(::fmt::format(fmt_str, __VA_ARGS__))
-

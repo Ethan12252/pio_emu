@@ -5,7 +5,7 @@
 // TODO: Maybe rewrite in Singleton? and add locks?
 
 Logger::Logger() :
-    currentLevel_(LogLevel::INFO),
+    currentLevel_(LogLevel::LEVEL_INFO),
     consoleOutput_(true),
     fileOutput_(false)
 {
@@ -60,23 +60,23 @@ void Logger::log(LogLevel level, const std::string& message)
     
     switch (level)
     {
-    case LogLevel::DEBUG:
+    case LogLevel::LEVEL_DEBUG:
         levelStr = "DEBUG";
         textColor = fmt::color::light_blue;
         break;
-    case LogLevel::INFO:
+    case LogLevel::LEVEL_INFO:
         levelStr = "INFO";
         textColor = fmt::color::light_green;
         break;
-    case LogLevel::WARNING:
+    case LogLevel::LEVEL_WARNING:
         levelStr = "WARNING";
         textColor = fmt::color::green_yellow;
         break;
-    case LogLevel::ERROR:
+    case LogLevel::LEVEL_ERROR:
         levelStr = "ERROR";
         textColor = fmt::color::red;
         break;
-    case LogLevel::FATAL:
+    case LogLevel::LEVEL_FATAL:
         levelStr = "FATAL";
         textColor = fmt::color::magenta;
         break;
@@ -98,25 +98,25 @@ void Logger::log(LogLevel level, const std::string& message)
 
 void Logger::debug(const std::string& message)
 {
-    log(LogLevel::DEBUG, message);
+    log(LogLevel::LEVEL_DEBUG, message);
 }
 
 void Logger::info(const std::string& message)
 {
-    log(LogLevel::INFO, message);
+    log(LogLevel::LEVEL_INFO, message);
 }
 
 void Logger::warning(const std::string& message)
 {
-    log(LogLevel::WARNING, message);
+    log(LogLevel::LEVEL_ERROR, message);
 }
 
 void Logger::error(const std::string& message)
 {
-    log(LogLevel::ERROR, message);
+    log(LogLevel::LEVEL_ERROR, message);
 }
 
 void Logger::fatal(const std::string& message)
 {
-    log(LogLevel::FATAL, message);
+    log(LogLevel::LEVEL_FATAL, message);
 }

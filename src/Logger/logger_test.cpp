@@ -5,7 +5,7 @@
 
 int main() {
     // Set log level to DEBUG to see all messages
-    logger.setLevel(LogLevel::DEBUG);
+    logger.setLevel(Logger::LogLevel::LEVEL_DEBUG);
 
     // Enable console output (this is default)
     logger.enableConsoleOutput(true);
