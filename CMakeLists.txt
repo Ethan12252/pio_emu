@@ -36,6 +36,7 @@ set(PIO_TESTS
         out
         in
         gpioset
+        doSideSet
 )
 
 # Create test executables from the list

@@ -65,7 +65,12 @@ public:
         std::array<int8_t, 32> out_data;
         std::array<int8_t, 32> external_data;
         std::array<int8_t, 32> sideset_data;
-        std::array<int8_t, 32> pindirs;
+
+        // pindirs
+        std::array<int8_t, 32> pindirs;  // 0 for output
+        std::array<int8_t, 32> set_pindirs;
+        std::array<int8_t, 32> out_pindirs;
+        std::array<int8_t, 32> sideset_pindirs;
     } gpio;
 
     // FIFOs

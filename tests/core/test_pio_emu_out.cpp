@@ -144,7 +144,7 @@ TEST_CASE("executeOut() to PINS and PINDIRS")
     for (int i = 0; i < 32; i++)
     {
         pio.gpio.out_data[i] = -1;
-        pio.gpio.pindirs[i] = -1;
+        pio.gpio.out_pindirs[i] = -1;
     }
 
     SUBCASE("OUT to PINS")
@@ -222,19 +222,19 @@ TEST_CASE("executeOut() to PINS and PINDIRS")
 
         for (int i = 0; i < 32; i++)
         {
-            pio.gpio.pindirs[i] = -1;
+            pio.gpio.out_pindirs[i] = -1;
         }
 
         pio.currentInstruction = buildOutInstruction(OutDestination::PINDIRS, 4);
         pio.executeOut();
 
         // Check if pindirs 5-8 have been set correctly with the pattern 1010
-        CHECK(pio.gpio.pindirs[5] == 0);
-        CHECK(pio.gpio.pindirs[6] == 1);
-        CHECK(pio.gpio.pindirs[7] == 0);
-        CHECK(pio.gpio.pindirs[8] == 1);
-        CHECK(pio.gpio.pindirs[4] == -1); // Unaffected
-        CHECK(pio.gpio.pindirs[9] == -1); // Unaffected
+        CHECK(pio.gpio.out_pindirs[5] == 0);
+        CHECK(pio.gpio.out_pindirs[6] == 1);
+        CHECK(pio.gpio.out_pindirs[7] == 0);
+        CHECK(pio.gpio.out_pindirs[8] == 1);
+        CHECK(pio.gpio.out_pindirs[4] == -1); // Unaffected
+        CHECK(pio.gpio.out_pindirs[9] == -1); // Unaffected
     }
 }
 

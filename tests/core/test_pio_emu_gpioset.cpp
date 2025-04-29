@@ -7,49 +7,47 @@
 class PioStateMachineFixture
 {
 protected:
-    PioStateMachine sm;
+    PioStateMachine pio;
 
     // Helper to reset GPIO arrays
     // raw_data and pindir to 0, others to -1
     void resetGpioArrays(int8_t value = -1)
     {
-        std::fill(sm.gpio.raw_data.begin(), sm.gpio.raw_data.end(), 0); // 0 by default
-        std::fill(sm.gpio.set_data.begin(), sm.gpio.set_data.end(), value);
-        std::fill(sm.gpio.out_data.begin(), sm.gpio.out_data.end(), value);
-        std::fill(sm.gpio.external_data.begin(), sm.gpio.external_data.end(), value);
-        std::fill(sm.gpio.sideset_data.begin(), sm.gpio.sideset_data.end(), value);
-        std::fill(sm.gpio.pindirs.begin(), sm.gpio.pindirs.end(), 0); // 0 = output by default
+        std::fill(pio.gpio.raw_data.begin(), pio.gpio.raw_data.end(), 0); // 0 by default
+        std::fill(pio.gpio.set_data.begin(), pio.gpio.set_data.end(), value);
+        std::fill(pio.gpio.out_data.begin(), pio.gpio.out_data.end(), value);
+        std::fill(pio.gpio.external_data.begin(), pio.gpio.external_data.end(), value);
+        std::fill(pio.gpio.sideset_data.begin(), pio.gpio.sideset_data.end(), value);
+        std::fill(pio.gpio.pindirs.begin(), pio.gpio.pindirs.end(), 0); // 0 = output by default
+        std::fill(pio.gpio.set_pindirs.begin(), pio.gpio.set_pindirs.end(), value);
+        std::fill(pio.gpio.out_pindirs.begin(), pio.gpio.out_pindirs.end(), value);
+        std::fill(pio.gpio.sideset_pindirs.begin(), pio.gpio.sideset_pindirs.end(), value);
     }
 
     // Helper to set all 'pins' in 'array' to value
-    void setPins(std::array<int8_t, 32>& array, const std::vector<int>& pins, int8_t value)
+    static void setPins(std::array<int8_t, 32>& array, const std::vector<int>& pins, int8_t value)
     {
         for (int pin : pins)
         {
             if (pin >= 0 && pin < 32)
-            {
                 array[pin] = value;
-            }
         }
     }
 
     // Helper to check if all 'pins' in 'array' have the value of expected
-    void checkPins(const std::array<int8_t, 32>& array, const std::vector<int>& pins, int8_t expected)
+    static void checkPins(const std::array<int8_t, 32>& array, const std::vector<int>& pins, int8_t expected)
     {
         for (int pin : pins)
             CHECK(array[pin] == expected);
     }
 
     // Helper to check if pins *NOT* in 'pins' have expected values
-    void checkPinsNotIn(const std::array<int8_t, 32>& array, const std::vector<int>& pins, int8_t expected)
+    static void checkPinsNotIn(const std::array<int8_t, 32>& array, const std::vector<int>& pins, int8_t expected)
     {
         for (int i = 0; i < 32; i++)
         {
             if (std::find(pins.begin(), pins.end(), i) == pins.end())
-            {
-                INFO("Checking pin ", i, " expected value: ", (int)expected, " actual: ", (int)array[i]);
                 CHECK(array[i] == expected);
-            }
         }
     }
 };
@@ -60,119 +58,193 @@ TEST_CASE_FIXTURE(PioStateMachineFixture, "PioStateMachine::setAllGpio tests")
     {
         resetGpioArrays(-1);
 
-        sm.setAllGpio();
+        pio.setAllGpio();
 
         // Check if raw_data remains 0 (initial value)
-        checkPinsNotIn(sm.gpio.raw_data, {}, 0);
+        checkPinsNotIn(pio.gpio.raw_data, {}, 0);
     }
 
     SUBCASE("GPIO priority: out/set (lowest)")
     {
         resetGpioArrays(-1);
-        std::fill(sm.gpio.pindirs.begin(), sm.gpio.pindirs.end(), 0); // pindirs to output
+        std::fill(pio.gpio.pindirs.begin(), pio.gpio.pindirs.end(), 0); // pindirs to output
 
         // Set out_data pin 0, 5 to 1
-        setPins(sm.gpio.out_data, {0, 5}, 1);
+        setPins(pio.gpio.out_data, {0, 5}, 1);
 
         // Set set_data pin 3, 8 to 1
-        setPins(sm.gpio.set_data, {3, 8}, 1);
+        setPins(pio.gpio.set_data, {3, 8}, 1);
 
-        sm.setAllGpio();
+        pio.setAllGpio();
 
-        checkPins(sm.gpio.raw_data, {0, 3, 5, 8}, 1);
+        checkPins(pio.gpio.raw_data, {0, 3, 5, 8}, 1);
 
         // Check if other pins remains unmodified
-        checkPinsNotIn(sm.gpio.raw_data, {0, 3, 5, 8}, 0);
+        checkPinsNotIn(pio.gpio.raw_data, {0, 3, 5, 8}, 0);
     }
 
     SUBCASE("GPIO priority: sideset (mid)")
     {
         resetGpioArrays(-1);
-        std::fill(sm.gpio.pindirs.begin(), sm.gpio.pindirs.end(), 0); // pindirs output
+        std::fill(pio.gpio.pindirs.begin(), pio.gpio.pindirs.end(), 0); // pindirs output
 
         // Set out_data pin 0, 1 to 1
-        setPins(sm.gpio.out_data, {0, 1}, 1);
+        setPins(pio.gpio.out_data, {0, 1}, 1);
 
         // Set sideset_data with conflicting value on pin 0
-        setPins(sm.gpio.sideset_data, {0, 2}, 0);
+        setPins(pio.gpio.sideset_data, {0, 2}, 0);
 
-        sm.setAllGpio();
+        pio.setAllGpio();
 
         // sideset should override out for pin 0
-        CHECK(sm.gpio.raw_data[0] == 0); // sideset wins
-        CHECK(sm.gpio.raw_data[1] == 1); // set by out_data
-        CHECK(sm.gpio.raw_data[2] == 0); // set by sideset
+        CHECK(pio.gpio.raw_data[0] == 0); // sideset wins
+        CHECK(pio.gpio.raw_data[1] == 1); // set by out_data
+        CHECK(pio.gpio.raw_data[2] == 0); // set by sideset
     }
 
     SUBCASE("GPIO priority: external (highest priority)")
     {
         resetGpioArrays(-1);
-        std::fill(sm.gpio.pindirs.begin(), sm.gpio.pindirs.end(), 0); // output
+        std::fill(pio.gpio.pindirs.begin(), pio.gpio.pindirs.end(), 0); // output
 
         // side-set
-        setPins(sm.gpio.out_data, {0, 1}, 1);
+        setPins(pio.gpio.out_data, {0, 1}, 1);
         // out
-        setPins(sm.gpio.sideset_data, {0, 2}, 0);
+        setPins(pio.gpio.sideset_data, {0, 2}, 0);
 
         // conflict on pin 0, 2
-        setPins(sm.gpio.external_data, {0, 1, 2}, 1);
+        setPins(pio.gpio.external_data, {0, 1, 2}, 1);
 
-        sm.setAllGpio();
+        pio.setAllGpio();
 
         // external should override everything
-        CHECK(sm.gpio.raw_data[0] == 1); // external wins over side-set and out
-        CHECK(sm.gpio.raw_data[1] == 1);
-        CHECK(sm.gpio.raw_data[2] == 1);
+        CHECK(pio.gpio.raw_data[0] == 1); // external wins over side-set and out
+        CHECK(pio.gpio.raw_data[1] == 1);
+        CHECK(pio.gpio.raw_data[2] == 1);
     }
 
-    SUBCASE("Pin directions affect output")
+    SUBCASE("Initial state should not modify pindirs")
+    {
+        resetGpioArrays(-1);
+        pio.setAllGpio();
+
+        // should reamin default 0 (output)
+        checkPinsNotIn(pio.gpio.pindirs, {}, 0);
+    }
+
+    SUBCASE("OUT PINDIRS sets pin directions (lowest priority)")
     {
         resetGpioArrays(-1);
 
-        // some pindirs as inputs
-        setPins(sm.gpio.pindirs, {1, 3, 5}, 1);
+        setPins(pio.gpio.out_pindirs, {0, 1, 2}, 1);
 
-        // Set out_data for all pins (pin0~5)
-        for (int i = 0; i < 6; i++)
-            sm.gpio.out_data[i] = 1;
+        pio.setAllGpio();
 
-        sm.setAllGpio();
+        // should be output 1
+        checkPins(pio.gpio.pindirs, {0, 1, 2}, 1);
 
-        // Check if output pins were set
-        checkPins(sm.gpio.raw_data, {0, 2, 4}, 1);
-
-        // Input pins should not be modified
-        checkPins(sm.gpio.raw_data, {1, 3, 5}, 0);
+        // Check others
+        checkPinsNotIn(pio.gpio.pindirs, {0, 1, 2}, 0);
     }
 
-    SUBCASE("External inputs should override even pindir is output")  // TODO: Check if this is true IRL
+    SUBCASE("SIDESET PINDIRS overrides OUT and SET (mid priority)")
     {
         resetGpioArrays(-1);
-        std::fill(sm.gpio.pindirs.begin(), sm.gpio.pindirs.end(), 0); // all outputs
 
-        setPins(sm.gpio.out_data, {0, 1}, 0);
+        // OUT 0 1 to 1(input)
+        setPins(pio.gpio.out_pindirs, {0, 1}, 1);
 
-        // Set external_data with conflicting value
-        setPins(sm.gpio.external_data, {0, 1}, 1);
+        // SET 1 2 to 1
+        setPins(pio.gpio.set_pindirs, {1, 2}, 1);
 
-        sm.setAllGpio();
+        // SIDESET 0,1 to 0(output)
+        setPins(pio.gpio.sideset_pindirs, {0, 1}, 0);
 
-        // External inputs should override even pindir is output
-        checkPins(sm.gpio.raw_data, {0, 1}, 1);
+        pio.setAllGpio();
+
+        // SIDESET should override
+        CHECK(pio.gpio.pindirs[0] == 0); // Override
+        CHECK(pio.gpio.pindirs[1] == 0); // Override
+        CHECK(pio.gpio.pindirs[2] == 1); // by SET PINDIRS
+    }
+
+    SUBCASE("Pindirs affects data output")
+    {
+        resetGpioArrays(-1);
+
+        // Set pins 0,1,2 data to 1 by out_data
+        setPins(pio.gpio.out_data, {0, 1, 2}, 1);
+
+        // But set pin 1 to be input by out_pindirs
+        setPins(pio.gpio.out_pindirs, {1}, 1);
+
+        pio.setAllGpio();
+
+        CHECK(pio.gpio.raw_data[0] == 1);
+        CHECK(pio.gpio.raw_data[1] == 0); // not set because is an input
+        CHECK(pio.gpio.raw_data[2] == 1);
+    }
+
+    SUBCASE("Complex priority test with all pindirs sources")
+    {
+        resetGpioArrays(-1);
+
+        // conflicting pin directions
+        setPins(pio.gpio.out_pindirs, {0, 1, 2, 3}, 0);
+        setPins(pio.gpio.set_pindirs, {1, 2, 3, 4}, 1);
+        setPins(pio.gpio.sideset_pindirs, {2, 3, 4, 5}, 0);
+
+        // data values
+        setPins(pio.gpio.out_data, {0, 1, 2, 3, 4, 5}, 1);
+
+        pio.setAllGpio();
+
+        // Check pin directions
+        CHECK(pio.gpio.pindirs[0] == 0); // Set by OUT
+        CHECK(pio.gpio.pindirs[1] == 1); // SET override OUT
+        CHECK(pio.gpio.pindirs[2] == 0); // SIDESET override SET
+        CHECK(pio.gpio.pindirs[3] == 0); // SIDESET override SET
+        CHECK(pio.gpio.pindirs[4] == 0); // SIDESET override SET
+        CHECK(pio.gpio.pindirs[5] == 0); // Set by SIDESET
+
+        // Check raw_data
+        // Only outputs should get 1 from out_data
+        CHECK(pio.gpio.raw_data[0] == 1);
+        CHECK(pio.gpio.raw_data[1] == 0); // Input (not changed)
+        CHECK(pio.gpio.raw_data[2] == 1);
+        CHECK(pio.gpio.raw_data[3] == 1);
+        CHECK(pio.gpio.raw_data[4] == 1);
+        CHECK(pio.gpio.raw_data[5] == 1);
+    }
+
+    SUBCASE("External data takes highest priority even when pin is an output")  // TODO: Check if this is true IRL (push-pull output)
+    {
+        resetGpioArrays(-1);
+
+        std::fill(pio.gpio.pindirs.begin(), pio.gpio.pindirs.end(), 0);
+
+        setPins(pio.gpio.out_data, {0, 1}, 0);
+
+        setPins(pio.gpio.external_data, {0}, 1);
+
+        pio.setAllGpio();
+
+        CHECK(pio.gpio.raw_data[0] == 1); // External wins
+        CHECK(pio.gpio.raw_data[1] == 0); // Set by out_data
     }
 
     SUBCASE("Unmodified values (-1) are ignored")
     {
         resetGpioArrays(-1);
-        std::fill(sm.gpio.pindirs.begin(), sm.gpio.pindirs.end(), 0);
+        std::fill(pio.gpio.pindirs.begin(), pio.gpio.pindirs.end(), 0);
 
-        std::fill(sm.gpio.raw_data.begin(), sm.gpio.raw_data.end(), 0);  // raw_data to all 0
+        std::fill(pio.gpio.raw_data.begin(), pio.gpio.raw_data.end(), 0); // raw_data to all 0
 
-        setPins(sm.gpio.out_data, {1, 3}, 1);
+        setPins(pio.gpio.out_data, {1, 3}, 1);
 
-        sm.setAllGpio();
+        pio.setAllGpio();
 
-        checkPins(sm.gpio.raw_data, {1, 3}, 1);
-        checkPinsNotIn(sm.gpio.raw_data, {1, 3}, 0);
+        checkPins(pio.gpio.raw_data, {1, 3}, 1);
+        checkPinsNotIn(pio.gpio.raw_data, {1, 3}, 0);
     }
 }

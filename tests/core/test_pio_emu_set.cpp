@@ -165,7 +165,7 @@ TEST_CASE("SET PINDIRS Instructions")
 
     for (int i = 0; i < 32; i++)
     {
-        pio.gpio.pindirs[i] = 0;
+        pio.gpio.set_pindirs[i] = 0;
     }
 
     SUBCASE("Basic PINDIRS operation")
@@ -176,12 +176,12 @@ TEST_CASE("SET PINDIRS Instructions")
         pio.currentInstruction = buildSetInstruction(PioDestination::PINDIRS, 3);
         pio.executeSet();
 
-        CHECK(pio.gpio.pindirs[10] == 1);
-        CHECK(pio.gpio.pindirs[11] == 1);
-        CHECK(pio.gpio.pindirs[12] == 0);
-        CHECK(pio.gpio.pindirs[13] == 0);
-        CHECK(pio.gpio.pindirs[9] == 0);
-        CHECK(pio.gpio.pindirs[14] == 0);
+        CHECK(pio.gpio.set_pindirs[10] == 1);
+        CHECK(pio.gpio.set_pindirs[11] == 1);
+        CHECK(pio.gpio.set_pindirs[12] == 0);
+        CHECK(pio.gpio.set_pindirs[13] == 0);
+        CHECK(pio.gpio.set_pindirs[9] == 0);
+        CHECK(pio.gpio.set_pindirs[14] == 0);
     }
 
     SUBCASE("PINDIRS with high base")
@@ -192,15 +192,15 @@ TEST_CASE("SET PINDIRS Instructions")
         pio.currentInstruction = buildSetInstruction(PioDestination::PINDIRS, 15);
         pio.executeSet();
 
-        CHECK(pio.gpio.pindirs[24] == 1);
-        CHECK(pio.gpio.pindirs[25] == 1);
-        CHECK(pio.gpio.pindirs[26] == 1);
-        CHECK(pio.gpio.pindirs[27] == 1);
-        CHECK(pio.gpio.pindirs[28] == 0);
-        CHECK(pio.gpio.pindirs[29] == 0);
-        CHECK(pio.gpio.pindirs[30] == 0);
-        CHECK(pio.gpio.pindirs[31] == 0);
-        CHECK(pio.gpio.pindirs[23] == 0);
+        CHECK(pio.gpio.set_pindirs[24] == 1);
+        CHECK(pio.gpio.set_pindirs[25] == 1);
+        CHECK(pio.gpio.set_pindirs[26] == 1);
+        CHECK(pio.gpio.set_pindirs[27] == 1);
+        CHECK(pio.gpio.set_pindirs[28] == 0);
+        CHECK(pio.gpio.set_pindirs[29] == 0);
+        CHECK(pio.gpio.set_pindirs[30] == 0);
+        CHECK(pio.gpio.set_pindirs[31] == 0);
+        CHECK(pio.gpio.set_pindirs[23] == 0);
     }
 
     SUBCASE("PINDIRS with wrap-around")
@@ -211,11 +211,11 @@ TEST_CASE("SET PINDIRS Instructions")
         pio.currentInstruction = buildSetInstruction(PioDestination::PINDIRS, 7);
         pio.executeSet();
 
-        CHECK(pio.gpio.pindirs[30] == 1);
-        CHECK(pio.gpio.pindirs[31] == 1);
-        CHECK(pio.gpio.pindirs[0] == 1);
-        CHECK(pio.gpio.pindirs[1] == 0);
-        CHECK(pio.gpio.pindirs[2] == 0);
+        CHECK(pio.gpio.set_pindirs[30] == 1);
+        CHECK(pio.gpio.set_pindirs[31] == 1);
+        CHECK(pio.gpio.set_pindirs[0] == 1);
+        CHECK(pio.gpio.set_pindirs[1] == 0);
+        CHECK(pio.gpio.set_pindirs[2] == 0);
     }
 }
 

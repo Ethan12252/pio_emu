@@ -33,14 +33,14 @@ void PioStateMachine::doSideSet(u32 delay_side_set_field)
 {
     if (settings.sideset_opt) // sideset optional bit enable
     {
-        if ((delay_side_set_field >> 4) & 1) // check if msb is set (do sideset)
+        if ((delay_side_set_field >> 4) & 1) // check if msb is set (do sideset) TODO: Check opt bit encoding
         {
             for (int i = 0; i < settings.sideset_count - 1; i++) // sideset_count - 1 (opt bit)
             {
                 u32 bitVal = (delay_side_set_field >> i) & 1;
                 u32 pinNum = (settings.sideset_base + i) % 32;
                 if (settings.sideset_pindirs == true) // to pindir
-                    gpio.pindirs[pinNum] = bitVal;
+                    gpio.sideset_pindirs[pinNum] = bitVal;
                 else
                     gpio.sideset_data[pinNum] = bitVal;
             }
@@ -53,7 +53,7 @@ void PioStateMachine::doSideSet(u32 delay_side_set_field)
             u32 bitVal = (delay_side_set_field >> i) & 1;
             u32 pinNum = (settings.sideset_base + i) % 32;
             if (settings.sideset_pindirs == true) // to pindir
-                gpio.pindirs[pinNum] = bitVal;
+                gpio.sideset_pindirs[pinNum] = bitVal;
             else
                 gpio.sideset_data[pinNum] = bitVal;
         }
@@ -67,10 +67,22 @@ void PioStateMachine::setAllGpio() // TODO: Check with 'mov' 'set' 'out' instruc
     // s3.5.6 : If a side-set overlaps with an OUT/SET performed by that state machine on the same cycle,
     //          the side-set takes precedencein the overlapping region.
 
+    // update pindir first
+    for (int i = 0 ; i < 32;i++)
+    {
+
+        if (gpio.out_pindirs[i] != -1) // out
+            gpio.pindirs[i] = gpio.out_pindirs[i];
+        if (gpio.set_pindirs[i] != -1) // set
+            gpio.pindirs[i] = gpio.set_pindirs[i];
+        if (gpio.sideset_pindirs[i] != -1) // sideset (highest priority)
+            gpio.pindirs[i] = gpio.sideset_pindirs[i];
+    }
+
     // First 'out' and 'set' mapping (lowest priority)
     for (int i = 0; i < 32; i++)
     {
-        // out
+        // ----- out -----
         if (gpio.out_data[i] != -1) // check modified pins
         {
             if (gpio.pindirs[i] == 0) // pindir set to output
@@ -78,7 +90,8 @@ void PioStateMachine::setAllGpio() // TODO: Check with 'mov' 'set' 'out' instruc
             else
                 LOG_WARNING("GPIO pin set by 'out' is not an output, continuing");
         }
-        // set
+
+        // ----- set -----
         if (gpio.set_data[i] == -1) // check modified pins
             continue;
         else // modified
@@ -93,7 +106,7 @@ void PioStateMachine::setAllGpio() // TODO: Check with 'mov' 'set' 'out' instruc
     // Second 'side-set' mapping (medium priority)
     for (int i = 0; i < 32; i++)
     {
-        // side-set
+        // ----- side-set -----
         if (gpio.sideset_data[i] == -1) // check modified pins
             continue;
         else // modified
@@ -109,7 +122,7 @@ void PioStateMachine::setAllGpio() // TODO: Check with 'mov' 'set' 'out' instruc
     // TODO: Check if this is true (push-pull output should extrenal wins?)
     for (int i = 0; i < 32; i++)
     {
-        // side-set
+        // ----- external -----
         if (gpio.external_data[i] == -1) // check modified pins
             continue;
         else // modified
@@ -498,30 +511,30 @@ void PioStateMachine::executeOut()
             for (int i = 0; i < bitCount; i++)
             {
                 u32 outPin = (settings.out_base + i) % 32;
-                gpio.pindirs[outPin] = (data & (1 << i)) ? 1 : 0;
+                gpio.out_pindirs[outPin] = (data & (1 << i)) ? 1 : 0;
             }
-
-            break;
-        case 0b101: // PC
-            jmp_to = data;
-            skip_increase_pc = true;
-            break;
-        case 0b110: // ISR
-            regs.isr = data;
-            regs.isr_shift_count = bitCount; // TODO: Need spec check (+= bitcount or = bitcount) (s3.2.3.3)
-            break;
-        case 0b111: // EXEC   TODO: Need function check
-            skip_increase_pc = true;
-            skip_delay = true;
-            exec_command = true;
-            currentInstruction = osrOriginal; // Next instruction (we dont increace pc next cycle)
-            break;
-        default:
-            LOG_ERROR("'out' have unknow destination");
-            return;
         }
+        break;
+    case 0b101: // PC
+        jmp_to = data;
+        skip_increase_pc = true;
+        break;
+    case 0b110: // ISR
+        regs.isr = data;
+        regs.isr_shift_count = bitCount; // TODO: Need spec check (+= bitcount or = bitcount) (s3.2.3.3)
+        break;
+    case 0b111: // EXEC   TODO: Need function check
+        skip_increase_pc = true;
+        skip_delay = true;
+        exec_command = true;
+        currentInstruction = osrOriginal; // Next instruction (we dont increace pc next cycle)
+        break;
+    default:
+        LOG_ERROR("'out' have unknow destination");
+        return;
     }
 }
+
 
 void PioStateMachine::executePush()
 {
@@ -831,7 +844,7 @@ void PioStateMachine::executeSet()
             for (int i = 0; i < settings.set_count; i++)
             {
                 u32 setPin = (settings.set_base + i) % 32;
-                gpio.pindirs[setPin] = (data & (1 << i)) ? 1 : 0;
+                gpio.set_pindirs[setPin] = (data & (1 << i)) ? 1 : 0;
             }
         }
         break;
