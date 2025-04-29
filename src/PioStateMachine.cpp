@@ -58,7 +58,7 @@ void PioStateMachine::doSideSet(u32 delay_side_set_field)
                 gpio.sideset_data[pinNum] = bitVal;
         }
     }
-    setAllGpio();  // TODO:Need function check!!(should only update the sideset mapping)
+    setAllGpio(); // TODO:Need function check!!(should only update the sideset mapping)
 }
 
 void PioStateMachine::setAllGpio() // TODO: Check with 'mov' 'set' 'out' instruction
@@ -71,9 +71,7 @@ void PioStateMachine::setAllGpio() // TODO: Check with 'mov' 'set' 'out' instruc
     for (int i = 0; i < 32; i++)
     {
         // out
-        if (gpio.out_data[i] == -1) // check modified pins
-            continue;
-        else // modified
+        if (gpio.out_data[i] != -1) // check modified pins
         {
             if (gpio.pindirs[i] == 0) // pindir set to output
                 gpio.raw_data[i] = gpio.out_data[i];
@@ -108,6 +106,7 @@ void PioStateMachine::setAllGpio() // TODO: Check with 'mov' 'set' 'out' instruc
     }
 
     // Finally, handle externally driven pins (highest priority)
+    // TODO: Check if this is true (push-pull output should extrenal wins?)
     for (int i = 0; i < 32; i++)
     {
         // side-set
