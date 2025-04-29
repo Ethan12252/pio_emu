@@ -35,11 +35,7 @@ set(PIO_TESTS
         irq
         out
         in
-        # Add more instructions here as needed
-        # mov
-        # jmp
-        # wait
-        # push_pull
+        gpioset
 )
 
 # Create test executables from the list
@@ -54,7 +50,7 @@ endforeach ()
 
 # Logger test executable
 add_executable(test_logger
-        src/logger/logger_test.cpp
+        tests/logger_test.cpp
         src/logger/Logger.cpp
         src/logger/Logger.h
 )

@@ -83,7 +83,7 @@ public:
     bool irq_is_waiting = false;
 
     void executeInstruction();
-    void tick(); // Foward a clock
+    void tick(); // Forward a clock
 
     // Instruction handlers
     void executeJmp();

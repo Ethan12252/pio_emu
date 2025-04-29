@@ -19,82 +19,6 @@ uint16_t buildSetInstruction(PioDestination destination, uint8_t value)
     return (0b111 << 13) | (static_cast<uint8_t>(destination) << 5) | (value & 0x1F);
 }
 
-TEST_CASE("executeSet() test")
-{
-    PioStateMachine pio;
-
-    SUBCASE("SET X Register")
-    {
-        // Set X to a non-zero value to confirm it's properly cleared
-        pio.regs.x = 0xFFFFFFFF;
-        pio.currentInstruction = buildSetInstruction(PioDestination::X, 15);
-        pio.executeSet();
-        CHECK(pio.regs.x == 15); // Only 5 LSBs set, others cleared
-
-        // Test max 5-bit value
-        pio.regs.x = 0xFFFFFFFF;
-        pio.currentInstruction = buildSetInstruction(PioDestination::X, 31);
-        pio.executeSet();
-        CHECK(pio.regs.x == 31);
-
-        // Test value masking to 5 bits (0x1F)
-        pio.regs.x = 0xFFFFFFFF;
-        pio.currentInstruction = buildSetInstruction(PioDestination::X, 0xFF);
-        pio.executeSet();
-        CHECK(pio.regs.x == 31); // 0xFF & 0x1F = 31
-    }
-
-    SUBCASE("SET Y Register")
-    {
-        // Set Y to a non-zero value to confirm it's properly cleared
-        pio.regs.y = 0xFFFFFFFF;
-        pio.currentInstruction = buildSetInstruction(PioDestination::Y, 15);
-        pio.executeSet();
-        CHECK(pio.regs.y == 15); // Only 5 LSBs set, others cleared
-
-        // Test max 5-bit value
-        pio.regs.y = 0xFFFFFFFF;
-        pio.currentInstruction = buildSetInstruction(PioDestination::Y, 31);
-        pio.executeSet();
-        CHECK(pio.regs.y == 31);
-
-        // Test value masking to 5 bits
-        pio.regs.y = 0xFFFFFFFF;
-        pio.currentInstruction = buildSetInstruction(PioDestination::Y, 0xFF);
-        pio.executeSet();
-        CHECK(pio.regs.y == 31); // 0xFF & 0x1F = 31
-    }
-
-    SUBCASE("Reserved destinations")
-    {
-        // Testing reserved destinations should have no effect
-        pio.regs.x = 0;
-        pio.regs.y = 0;
-
-        // Reserved destination 0b011
-        pio.currentInstruction = buildSetInstruction(PioDestination::RESERVED_3, 15);
-        pio.executeSet();
-        CHECK(pio.regs.x == 0); // Should remain unchanged
-        CHECK(pio.regs.y == 0); // Should remain unchanged
-
-        // Reserved destinations 0b101, 0b110, 0b111
-        pio.currentInstruction = buildSetInstruction(PioDestination::RESERVED_5, 15);
-        pio.executeSet();
-        CHECK(pio.regs.x == 0);
-        CHECK(pio.regs.y == 0);
-
-        pio.currentInstruction = buildSetInstruction(PioDestination::RESERVED_6, 15);
-        pio.executeSet();
-        CHECK(pio.regs.x == 0);
-        CHECK(pio.regs.y == 0);
-
-        pio.currentInstruction = buildSetInstruction(PioDestination::RESERVED_7, 15);
-        pio.executeSet();
-        CHECK(pio.regs.x == 0);
-        CHECK(pio.regs.y == 0);
-    }
-}
-
 TEST_CASE("SET PINS Instructions")
 {
     PioStateMachine pio;
@@ -188,6 +112,53 @@ TEST_CASE("SET PINS Instructions")
     }
 }
 
+TEST_CASE("SET X Y")
+{
+    PioStateMachine pio;
+
+    SUBCASE("SET X Register")
+    {
+        // Set X to a non-zero value to confirm it's properly cleared
+        pio.regs.x = 0xFFFFFFFF;
+        pio.currentInstruction = buildSetInstruction(PioDestination::X, 15);
+        pio.executeSet();
+        CHECK(pio.regs.x == 15); // Only 5 LSBs set, others cleared
+
+        // Test max 5-bit value
+        pio.regs.x = 0xFFFFFFFF;
+        pio.currentInstruction = buildSetInstruction(PioDestination::X, 31);
+        pio.executeSet();
+        CHECK(pio.regs.x == 31);
+
+        // Test value masking to 5 bits (0x1F)
+        pio.regs.x = 0xFFFFFFFF;
+        pio.currentInstruction = buildSetInstruction(PioDestination::X, 0xFF);
+        pio.executeSet();
+        CHECK(pio.regs.x == 31); // 0xFF & 0x1F = 31
+    }
+
+    SUBCASE("SET Y Register")
+    {
+        // Set Y to a non-zero value to confirm it's properly cleared
+        pio.regs.y = 0xFFFFFFFF;
+        pio.currentInstruction = buildSetInstruction(PioDestination::Y, 15);
+        pio.executeSet();
+        CHECK(pio.regs.y == 15); // Only 5 LSBs set, others cleared
+
+        // Test max 5-bit value
+        pio.regs.y = 0xFFFFFFFF;
+        pio.currentInstruction = buildSetInstruction(PioDestination::Y, 31);
+        pio.executeSet();
+        CHECK(pio.regs.y == 31);
+
+        // Test value masking to 5 bits
+        pio.regs.y = 0xFFFFFFFF;
+        pio.currentInstruction = buildSetInstruction(PioDestination::Y, 0xFF);
+        pio.executeSet();
+        CHECK(pio.regs.y == 31); // 0xFF & 0x1F = 31
+    }
+}
+
 TEST_CASE("SET PINDIRS Instructions")
 {
     PioStateMachine pio;
@@ -245,5 +216,49 @@ TEST_CASE("SET PINDIRS Instructions")
         CHECK(pio.gpio.pindirs[0] == 1);
         CHECK(pio.gpio.pindirs[1] == 0);
         CHECK(pio.gpio.pindirs[2] == 0);
+    }
+}
+
+TEST_CASE("Reserved destinations")
+{
+    PioStateMachine pio;
+    // Testing reserved destinations should have no effect
+    pio.regs.x = 0;
+    pio.regs.y = 0;
+
+    SUBCASE("Reserved destination 011")
+    {
+        // Reserved destination 0b011
+        pio.currentInstruction = buildSetInstruction(PioDestination::RESERVED_3, 15);
+        pio.executeSet();
+        CHECK(pio.regs.x == 0); // unchanged
+        CHECK(pio.regs.y == 0);
+    }
+
+
+    SUBCASE("Reserved destination 101")
+    {
+        pio.currentInstruction = buildSetInstruction(PioDestination::RESERVED_5, 15);
+        pio.executeSet();
+        CHECK(pio.regs.x == 0);
+        CHECK(pio.regs.y == 0);
+    }
+
+
+    SUBCASE("Reserved destination 110")
+    {
+        pio.currentInstruction = buildSetInstruction(PioDestination::RESERVED_6, 15);
+        pio.executeSet();
+        CHECK(pio.regs.x == 0);
+        CHECK(pio.regs.y == 0);
+    }
+
+
+    SUBCASE("Reserved destination 111")
+    {
+        pio.currentInstruction = buildSetInstruction(PioDestination::RESERVED_7, 15);
+        pio.executeSet();
+        CHECK(pio.regs.x == 0);
+        CHECK(pio.regs.y == 0);
     }
 }

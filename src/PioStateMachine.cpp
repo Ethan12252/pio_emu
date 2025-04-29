@@ -58,7 +58,7 @@ void PioStateMachine::doSideSet(u32 delay_side_set_field)
                 gpio.sideset_data[pinNum] = bitVal;
         }
     }
-    setAllGpio();  // TODO:Need function check!!
+    setAllGpio();  // TODO:Need function check!!(should only update the sideset mapping)
 }
 
 void PioStateMachine::setAllGpio() // TODO: Check with 'mov' 'set' 'out' instruction

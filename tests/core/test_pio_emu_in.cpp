@@ -29,7 +29,8 @@ TEST_CASE("executeIn() test")
     SUBCASE("IN from PINS")
     {
         pio.settings.in_base = 5;
-        for (int i = 0; i < 32; i++) {
+        for (int i = 0; i < 32; i++)
+        {
             pio.gpio.raw_data[i] = (i % 2); // 0, 1, 0, 1... patterns
         }
 
@@ -37,28 +38,34 @@ TEST_CASE("executeIn() test")
         pio.regs.isr_shift_count = 0;
         pio.settings.in_shift_right = false; // Shift left
 
-        // IN PINS, 3 should read pins 5, 6, 7
-        pio.currentInstruction = buildInInstruction(PioSource::PINS, 3);
-        pio.executeIn();
+        SUBCASE("in pins, 3")
+        {
+            // IN PINS, 3 should read pins 5, 6, 7
+            pio.currentInstruction = buildInInstruction(PioSource::PINS, 3);
+            pio.executeIn();
 
-        // 101 (pins 5=1, 6=0, 7=1)
-        CHECK(pio.regs.isr == 0b101);
-        CHECK(pio.regs.isr_shift_count == 3);
+            // 101 (pins 5=1, 6=0, 7=1)
+            CHECK(pio.regs.isr == 0b101);
+            CHECK(pio.regs.isr_shift_count == 3);
 
-        // Shift in 4 more bits
-        pio.currentInstruction = buildInInstruction(PioSource::PINS, 4);
-        pio.executeIn();
+            SUBCASE("in pins, +4") // Shift in 4 more bits
+            {
+                pio.currentInstruction = buildInInstruction(PioSource::PINS, 4);
+                pio.executeIn();
 
-        // 101 shifted left 4 places + 0101 (pins 5=1, 6=0, 7=1, 8=0)
-        // Result: 0b1010101
-        CHECK(pio.regs.isr == 0b1010101);
-        CHECK(pio.regs.isr_shift_count == 7);
+                // 101 shifted left 4 places + 0101 (pins 5=1, 6=0, 7=1, 8=0)
+                // Result: 0b1010101
+                CHECK(pio.regs.isr == 0b1010101);
+                CHECK(pio.regs.isr_shift_count == 7);
+            }
+        }
     }
 
     SUBCASE("IN from PINS with right shift")
     {
         pio.settings.in_base = 10;
-        for (int i = 0; i < 32; i++) {
+        for (int i = 0; i < 32; i++)
+        {
             pio.gpio.raw_data[i] = (i % 2); // 0, 1... pattern
         }
 
@@ -82,23 +89,28 @@ TEST_CASE("executeIn() test")
         pio.regs.x = 0xA5A5A5A5; // 0b10100101...
         pio.regs.isr = 0;
         pio.regs.isr_shift_count = 0;
-        pio.settings.in_shift_right = false;  // left shift
+        pio.settings.in_shift_right = false; // left shift
 
-        // IN X, 8
-        pio.currentInstruction = buildInInstruction(PioSource::X, 8);
-        pio.executeIn();
+        SUBCASE("in x, 8")
+        {
+            // IN X, 8
+            pio.currentInstruction = buildInInstruction(PioSource::X, 8);
+            pio.executeIn();
 
-        CHECK(pio.regs.isr == 0xA5);
-        CHECK(pio.regs.isr_shift_count == 8);
+            CHECK(pio.regs.isr == 0xA5);
+            CHECK(pio.regs.isr_shift_count == 8);
 
-        // more bits
-        pio.currentInstruction = buildInInstruction(PioSource::X, 4);
-        pio.executeIn();
+            SUBCASE("in x, +4") // 4 more bits
+            {
+                pio.currentInstruction = buildInInstruction(PioSource::X, 4);
+                pio.executeIn();
 
-        // new isr = 0xA5A5A5A5
-        // 0xA5 + 0x5
-        CHECK(pio.regs.isr == 0xA55);
-        CHECK(pio.regs.isr_shift_count == 12);
+                // new isr = 0xA5A5A5A5
+                // 0xA5 + 0x5
+                CHECK(pio.regs.isr == 0xA55);
+                CHECK(pio.regs.isr_shift_count == 12);
+            }
+        }
     }
 
     SUBCASE("IN from Y register")
@@ -108,11 +120,11 @@ TEST_CASE("executeIn() test")
         pio.regs.isr_shift_count = 0;
         pio.settings.in_shift_right = false;
 
-        // IN Y, 16 should shift in the lowest 16 bits of Y
+        // IN Y, 16
         pio.currentInstruction = buildInInstruction(PioSource::Y, 16);
         pio.executeIn();
 
-        // Expected: lowest 16 bits of Y (0xFF00)
+        // lowest 16 bits of Y (0xFF00)
         CHECK(pio.regs.isr == 0xFF00);
         CHECK(pio.regs.isr_shift_count == 16);
     }
@@ -127,7 +139,7 @@ TEST_CASE("executeIn() test")
         pio.currentInstruction = buildInInstruction(PioSource::NULL_SRC, 8);
         pio.executeIn();
 
-        // 0xABCDEF01 << 8 + 0 = 0xCDEF0100
+        // 0xAB'CDEF'01 << 8 + 0 = 0xCDEF01'00
         CHECK(pio.regs.isr == 0xCDEF0100);
         CHECK(pio.regs.isr_shift_count == 16);
     }
@@ -137,7 +149,7 @@ TEST_CASE("executeIn() test")
         pio.settings.in_base = 0;
         pio.regs.isr = 0x12345678;
         pio.regs.isr_shift_count = 0;
-        pio.settings.in_shift_right = false;  // left shift
+        pio.settings.in_shift_right = false; // left shift
 
         // IN ISR, 8 should copy 8 bits from ISR back into itself
         pio.currentInstruction = buildInInstruction(PioSource::ISR, 8);
@@ -206,19 +218,19 @@ TEST_CASE("executeIn() test")
 
         pio.regs.isr = 0xAA;
         pio.regs.isr_shift_count = 7;
-        
+
         // IN PINS, 2 - over threshold
         pio.settings.in_base = 0;
         pio.gpio.raw_data[0] = 1;
         pio.gpio.raw_data[1] = 1;
         pio.currentInstruction = buildInInstruction(PioSource::PINS, 2);
         pio.executeIn();
-        
+
         // Should have pushed to RX FIFO and reset ISR
         CHECK(pio.rx_fifo_count == 1);
-        CHECK(pio.rx_fifo[0] == 0x2AB);  // 0xAA with 2 new bits = 0b0010'1010'1011
-        CHECK(pio.regs.isr == 0);  // ISR cleared after push
-        CHECK(pio.regs.isr_shift_count == 0);  // Shift count reset
+        CHECK(pio.rx_fifo[0] == 0x2AB); // 0xAA with 2 new bits = 0b0010'1010'1011
+        CHECK(pio.regs.isr == 0); // ISR cleared after push
+        CHECK(pio.regs.isr_shift_count == 0); // Shift count reset
     }
 
     SUBCASE("IN with exact threshold match")
@@ -229,16 +241,16 @@ TEST_CASE("executeIn() test")
         pio.settings.push_threshold = 8;
 
         pio.rx_fifo_count = 0;
-        
+
         // Set up ISR with empty state
         pio.regs.isr = 0;
         pio.regs.isr_shift_count = 0;
-        
+
         // IN X, 8 - exactly matches threshold
         pio.regs.x = 0xAB;
         pio.currentInstruction = buildInInstruction(PioSource::X, 8);
         pio.executeIn();
-        
+
         // Should have pushed to RX FIFO and reset ISR
         CHECK(pio.rx_fifo_count == 1);
         CHECK(pio.rx_fifo[0] == 0xAB);
@@ -250,32 +262,40 @@ TEST_CASE("executeIn() test")
     {
         // sources 100 and 101 are reserved
         // should has no effect on ISR
-        
+
         pio.regs.isr = 0x12345678;
         pio.regs.isr_shift_count = 10;
-        
-        // 100
-        pio.currentInstruction = buildInInstruction(PioSource::RESERVED_4, 8);
-        pio.executeIn();
-        
-        // unchanged
-        CHECK(pio.regs.isr == 0x12345678);
-        CHECK(pio.regs.isr_shift_count == 10);
-        
-        // 101
-        pio.currentInstruction = buildInInstruction(PioSource::RESERVED_5, 8);
-        pio.executeIn();
-        
-        // unchanged
-        CHECK(pio.regs.isr == 0x12345678);
-        CHECK(pio.regs.isr_shift_count == 10);
+
+        SUBCASE("source 101")
+        {
+            // 100
+            pio.currentInstruction = buildInInstruction(PioSource::RESERVED_4, 8);
+            pio.executeIn();
+
+            // unchanged
+            CHECK(pio.regs.isr == 0x12345678);
+            CHECK(pio.regs.isr_shift_count == 10);
+        }
+
+
+        SUBCASE("source 100")
+        {
+            // 101
+            pio.currentInstruction = buildInInstruction(PioSource::RESERVED_5, 8);
+            pio.executeIn();
+
+            // unchanged
+            CHECK(pio.regs.isr == 0x12345678);
+            CHECK(pio.regs.isr_shift_count == 10);
+        }
     }
 
     SUBCASE("IN from PINS with different base values")
     {
         // all pins to 1
-        for (int i = 0; i < 32; i++) {
-            pio.gpio.raw_data[i] = i % 2 ? 0 : 1;  // even i -> 1
+        for (int i = 0; i < 32; i++)
+        {
+            pio.gpio.raw_data[i] = i % 2 ? 0 : 1; // even i -> 1
         }
 
         // base 0
@@ -296,7 +316,8 @@ TEST_CASE("executeIn() test")
         CHECK(pio.regs.isr == 0b0101);
 
         // base 23
-        for (int i = 0; i < 32; i++) {
+        for (int i = 0; i < 32; i++)
+        {
             pio.gpio.raw_data[i] = 0;
         }
         pio.gpio.raw_data[24] = 1;
@@ -312,7 +333,8 @@ TEST_CASE("executeIn() test")
 
     SUBCASE("IN from PINS with wrap-around")
     {
-        for (int i = 0; i < 32; i++) {
+        for (int i = 0; i < 32; i++)
+        {
             pio.gpio.raw_data[i] = (i % 3 == 0) ? 1 : 0; // 1,0,0,1,0,0,...
         }
 
@@ -337,7 +359,8 @@ TEST_CASE("executeIn() test")
 
         // Fill the RX FIFO
         pio.rx_fifo_count = 4;
-        for (int i = 0; i < 4; i++) {
+        for (int i = 0; i < 4; i++)
+        {
             pio.rx_fifo[i] = 0xF0 + i;
         }
 
@@ -371,7 +394,8 @@ TEST_CASE("executeIn() test")
         CHECK(pio.regs.isr_shift_count == 1);
 
         // Do 8 times
-        for (int i = 0; i < 7; i++) {
+        for (int i = 0; i < 7; i++)
+        {
             pio.currentInstruction = buildInInstruction(PioSource::X, 1);
             pio.executeIn();
         }
@@ -392,7 +416,8 @@ TEST_CASE("executeIn() test")
         pio.regs.x = 0xF;
 
         // Multiple operations, each trigger an autopush
-        for (int i = 0; i < 3; i++) {
+        for (int i = 0; i < 3; i++)
+        {
             pio.regs.isr = 0;
             pio.regs.isr_shift_count = 0;
             pio.currentInstruction = buildInInstruction(PioSource::X, 4);
