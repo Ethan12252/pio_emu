@@ -10,14 +10,15 @@ public:
     uint32_t instructionMemory[32];
     uint32_t currentInstruction;
     uint32_t stateMachineNumber;
+
     // Runtime emu flags
     int jmp_to = -1;
     bool skip_increase_pc = false;
     bool delay_delay = false;
     // For some instruction delays need to be postponed to after the instruction (e.g. wait) has finished
-    bool skip_delay = false; // (s3.4.5.2) for 'out exec' and 'mov exec' "Delay cycles on the initial OUT are ignored"
-    bool exec_command = false;
-    // for 'out exec' and 'mov exec', might alter the logic for get nextInstruction for memory
+    bool skip_delay = false;   // (s3.4.5.2) for 'out exec' and 'mov exec' "Delay cycles on the initial OUT are ignored"
+    bool exec_command = false; // for 'out exec' and 'mov exec', might alter the logic for get nextInstruction for memory
+    int clock = 0;
 
     // State registers
     struct Registers
@@ -30,7 +31,7 @@ public:
         uint32_t osr_shift_count = 0;
         uint32_t pc = 0;
         uint32_t delay = 0;
-        uint32_t status = 0;
+        uint32_t status = 0;  // Indecate FIFO level > fifo_level_N, status_sel 0 for Tx 1 for Rx
     } regs;
 
     // Configuration settings
@@ -48,12 +49,16 @@ public:
         int out_count = -1;
         int push_threshold = 32;
         int pull_threshold = 32;
+        int fifo_level_N = -1;
+        int warp_start= 0;
+        int warp_end = 32;
         bool in_shift_right = false;
         bool out_shift_right = false;
         bool in_shift_autopush = false;
         bool out_shift_autopull = false;
         bool autopull_enable = false;
         bool autopush_enable = false;
+        bool status_sel = false;
     } settings;
 
     // GPIO regs (見s3.4.5)
@@ -103,4 +108,7 @@ public:
 
     void doSideSet(uint32_t delay_side_set_field);
     void setAllGpio();
+
+private:
+    void tick_handle_delay();
 };

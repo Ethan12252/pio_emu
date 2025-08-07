@@ -19,9 +19,10 @@ add_executable(pio_emu
 
 # Find required packages
 find_package(fmt CONFIG REQUIRED)
-find_package(doctest CONFIG REQUIRED)
-
 target_link_libraries(${PROJECT_NAME} PRIVATE fmt::fmt)
+
+find_package(doctest CONFIG REQUIRED)
+target_link_libraries(${PROJECT_NAME} PRIVATE doctest::doctest)
 
 # Enable testing
 enable_testing()

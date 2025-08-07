@@ -149,5 +149,48 @@ fabric.properties
 .idea/**/azureSettings.xml
 
 .venv/
-
+build/
+.vscode/
 # End of https://www.toptal.com/developers/gitignore/api/c++,clion
+
+# Visual Studio
+.vs/
+*.vcxproj*
+*.sln
+*.user
+*.suo
+*.opensdf
+*.sdf
+*.cache
+*.pdb
+*.ipch
+*.log
+
+# CMake
+CMakeSettings.json
+CMakeCache.txt
+CMakeFiles/
+cmake-build-*/
+build/
+out/
+Makefile
+install_manifest.txt
+
+# Compiled source
+out/
+*.obj
+*.o
+*.exe
+*.dll
+*.lib
+*.so
+*.a
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Others
+*.swp
+*.bak
+*.tmp

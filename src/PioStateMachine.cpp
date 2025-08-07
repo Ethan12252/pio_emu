@@ -1,6 +1,6 @@
 #include "PioStateMachine.h"
 
-typedef uint32_t u32;
+using u32 = uint32_t;
 
 void PioStateMachine::push_to_rx_fifo()
 {
@@ -27,6 +27,65 @@ void PioStateMachine::pull_from_tx_fifo()
 
 void PioStateMachine::tick()
 {
+    if (delay_delay == true)  // stalling
+        goto update_and_exit;
+    else
+    {
+        if (regs.delay > 0)
+        {
+            regs.delay--;
+            goto update_and_exit;
+        }
+
+        // for 'jmp' and 'wait' instruction
+        if (skip_increase_pc == false)  // We should increase PC as normal 
+        {
+            regs.pc++;
+            if (regs.pc == settings.warp_end + 1)
+                regs.pc = settings.warp_start;
+        }
+        else
+        {
+            // We want to skip increase pc
+            // Check if the skip is due to a jmp, set pc to the address to jmp to
+            if (jmp_to >= 0)
+            {
+                regs.pc = jmp_to;
+                jmp_to = -1;  // Back to unset
+            }
+            skip_increase_pc = false;
+        }
+
+        // Get new instruction and execute it
+        currentInstruction = instructionMemory[regs.pc];
+        executeInstruction();
+
+        // Update the 'status' depending on RxFIFO or TxFIFO count
+        if (settings.status_sel == 0)
+        {
+            // For Tx FIFO, All-ones if TX FIFO count < N, otherwise all-zeroes
+            regs.status = (tx_fifo_count < settings.fifo_level_N) ? 0xff'ff'ff'ff : 0;
+        }
+        else if(settings.status_sel == 1)
+        {
+            // For Rx FIFO
+            regs.status = (rx_fifo_count < settings.fifo_level_N) ? 0xff'ff'ff'ff : 0;
+        }
+        else
+        {
+            LOG_ERROR("Unknow status_sel");
+        }
+    }
+
+update_and_exit:
+    setAllGpio();
+    clock++;
+    return;
+}
+
+void PioStateMachine::tick_handle_delay()
+{
+
 }
 
 void PioStateMachine::doSideSet(u32 delay_side_set_field)
@@ -68,7 +127,7 @@ void PioStateMachine::setAllGpio() // TODO: Check with 'mov' 'set' 'out' instruc
     //          the side-set takes precedencein the overlapping region.
 
     // update pindir first
-    for (int i = 0 ; i < 32;i++)
+    for (int i = 0; i < 32; i++)
     {
 
         if (gpio.out_pindirs[i] != -1) // out
@@ -283,28 +342,28 @@ void PioStateMachine::executeWait()
             LOG_WARNING("in_base isn't set before use in wait pin, continuing");
             break;
         }
-    // pin is selected by adding Index to the PINCTRL_IN_BASE configuration, modulo 32 (s3.4.3.2)
+        // pin is selected by adding Index to the PINCTRL_IN_BASE configuration, modulo 32 (s3.4.3.2)
         if (gpio.raw_data[(settings.in_base + index) % 32] != polarity)
             condIsNotMet = true;
         break;
     case 0b10: // IRQ: wait for PIO IRQ flag selected by Index (見3.4.9.2)  TODO: Need check!(irq number calculation)
+    {
+        u32 index_msb = (index >> 4) & 1; // bit 4
+        u32 irq_wait_num = index & 0b111; // The 3 LSBs specify an IRQ index from 0-7. (s3.4.9.2)
+        //If the MSB is set, the sm ID (0…3) is added to the IRQ index, by way of modulo-4 addition on the "two LSBs" (s3.4.9.2)  TODO:Need spec check
+        if (index_msb == 1)
         {
-            u32 index_msb = (index >> 4) & 1; // bit 4
-            u32 irq_wait_num = index & 0b111; // The 3 LSBs specify an IRQ index from 0-7. (s3.4.9.2)
-            //If the MSB is set, the sm ID (0…3) is added to the IRQ index, by way of modulo-4 addition on the "two LSBs" (s3.4.9.2)  TODO:Need spec check
-            if (index_msb == 1)
-            {
-                u32 index_2lsbs = irq_wait_num & 0b11; // get the 2 LSBs
-                irq_wait_num = (index_2lsbs + stateMachineNumber) % 4; // modulo-4 addition on the "two LSBs"
-                irq_wait_num |= (index & 0b100); // Preserve bit 2
-            }
-            if (irq_flags[irq_wait_num] != polarity)
-                condIsNotMet = true;
-            else if (irq_flags[irq_wait_num] == polarity && polarity == 1)
-                irq_flags[irq_wait_num] = false;
-            // If Polarity is 1 IRQ flag is cleared by the sm when wait cond met. (s3.4.3.2)
-            break;
+            u32 index_2lsbs = irq_wait_num & 0b11; // get the 2 LSBs
+            irq_wait_num = (index_2lsbs + stateMachineNumber) % 4; // modulo-4 addition on the "two LSBs"
+            irq_wait_num |= (index & 0b100); // Preserve bit 2
         }
+        if (irq_flags[irq_wait_num] != polarity)
+            condIsNotMet = true;
+        else if (irq_flags[irq_wait_num] == polarity && polarity == 1)
+            irq_flags[irq_wait_num] = false;
+        // If Polarity is 1 IRQ flag is cleared by the sm when wait cond met. (s3.4.3.2)
+        break;
+    }
     case 0b11: // Reserved
         break;
     default:
@@ -321,7 +380,7 @@ void PioStateMachine::executeWait()
 
 void PioStateMachine::executeIn()
 {
-    // If autopush enable sm should automatically push the ISR to RX FIFO when the ISR is
+    // If autopush enable, sm should automatically push the ISR to RX FIFO when the ISR is
     // full (i.e.push_threshold met), but if th Rx FIFO is full the "in" instruction STALL
     if (push_is_stalling == true) // TODO:Need function check
     {
@@ -349,7 +408,7 @@ void PioStateMachine::executeIn()
             LOG_WARNING("'in_base' isn't set before use in 'in pin', continuing");
             return;
         }
-    // Loop through the pins we need to read
+        // Loop through the pins we need to read
         for (u32 i = 0; i < bitCount; i++)
         {
             // Calc the actual GPIO pin number (wrap around if > 31)
@@ -484,7 +543,7 @@ void PioStateMachine::executeOut()
             LOG_WARNING("'out_base' isn't set before use in 'out pin', continuing");
             return;
         }
-    // Loop through the pins we need to set
+        // Loop through the pins we need to set
         for (u32 i = 0; i < bitCount; i++)
         {
             // Calc the actual GPIO pin number (wrap around if > 31)
@@ -545,7 +604,7 @@ void PioStateMachine::executePush()
     // Check if there's space for rx fifo
     if (rx_fifo_count < 4)
     {
-        // have space
+        // Have space
         // IfFull: If 1, do nothing unless the total input shift count has reached its threshold,
         // SHIFTCTRL_PUSH_THRESH (the same as for autopush; see Section 3.5.4)
         if (ifFull)
@@ -637,7 +696,7 @@ void PioStateMachine::executeMov()
             LOG_WARNING("'in_base' isn't set before use in 'mov dst, pin', continuing");
             return;
         }
-    // Loop through the pins we need to read
+        // Loop through the pins we need to read
         for (u32 i = 0; i < 32; i++)
         {
             // Calc the actual GPIO pin number (wrap around if > 31)
@@ -681,15 +740,15 @@ void PioStateMachine::executeMov()
         data = ~data;
         break;
     case 0b10: // bit-reverse
+    {
+        u32 old_data = data;
+        data = 0;
+        for (int i = 0; i < 32; i++) // function checked
         {
-            u32 old_data = data;
-            data = 0;
-            for (int i = 0; i < 32; i++) // function checked
-            {
-                data |= ((old_data >> i) & 1) << (31 - i);
-            }
-            break;
+            data |= ((old_data >> i) & 1) << (31 - i);
         }
+        break;
+    }
     case 0b11: // reserved
         break;
     default:
@@ -711,9 +770,9 @@ void PioStateMachine::executeMov()
             LOG_WARNING("'out_count' isn't set before use in 'mov pin, continuing");
             return;
         }
-    // Loop through the pins we need to write
+        // Loop through the pins we need to write
         for (u32 i = 0; i < settings.out_count; i++)
-        // P.337 OUT_COUNT: The number of pins asserted by ... MOV PINS instruction.
+            // P.337 OUT_COUNT: The number of pins asserted by ... MOV PINS instruction.
         {
             // Calc the actual GPIO pin number (wrap around if > 31)
             u32 writePinNumber = (settings.out_base + i) % 32;

@@ -3,7 +3,6 @@
 #include "PioStateMachine.h"
 
 using u32 = uint32_t;
-
 int main()
 {
     PioStateMachine pio0;
