@@ -31,6 +31,7 @@ void PioStateMachine::tick()
         goto update_and_exit;
     else
     {
+        // Handle delay
         if (regs.delay > 0)
         {
             regs.delay--;
@@ -81,11 +82,6 @@ update_and_exit:
     setAllGpio();
     clock++;
     return;
-}
-
-void PioStateMachine::tick_handle_delay()
-{
-
 }
 
 void PioStateMachine::doSideSet(u32 delay_side_set_field)
@@ -201,7 +197,7 @@ void PioStateMachine::setAllGpio() // TODO: Check with 'mov' 'set' 'out' instruc
 void PioStateMachine::executeInstruction()
 {
     // Get Opcode field (15:13)
-    u32 opcode = (currentInstruction & 0xe0) >> 13;
+    u32 opcode = (currentInstruction & 0xe000) >> 13;
     u32 isPush = (currentInstruction >> 7) & 1u; // bit 7 = 0 為 PUSH, = 1 為 PULL
     u32 delay_side_set_field = (currentInstruction >> 8) & 0b11111; // bit 12:8
 

@@ -51,7 +51,7 @@ public:
         int pull_threshold = 32;
         int fifo_level_N = -1;
         int warp_start= 0;
-        int warp_end = 32;
+        int warp_end = 31;
         bool in_shift_right = false;
         bool out_shift_right = false;
         bool in_shift_autopush = false;
