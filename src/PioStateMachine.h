@@ -65,17 +65,17 @@ public:
     struct GPIORegs
     {
         // because of priority, we have sepreate gpio regs
-        std::array<int8_t, 32> raw_data;
-        std::array<int8_t, 32> set_data;
-        std::array<int8_t, 32> out_data;
-        std::array<int8_t, 32> external_data;
-        std::array<int8_t, 32> sideset_data;
+        std::array<int8_t, 32> raw_data = { -1 };
+        std::array<int8_t, 32> set_data = { -1 };
+        std::array<int8_t, 32> out_data = { -1 };
+        std::array<int8_t, 32> external_data = { -1 };
+        std::array<int8_t, 32> sideset_data = { -1 };
 
         // pindirs
-        std::array<int8_t, 32> pindirs;  // 0 for output
-        std::array<int8_t, 32> set_pindirs;
-        std::array<int8_t, 32> out_pindirs;
-        std::array<int8_t, 32> sideset_pindirs;
+        std::array<int8_t, 32> pindirs = { -1 };  // 0 for output
+        std::array<int8_t, 32> set_pindirs = { -1 };
+        std::array<int8_t, 32> out_pindirs = { -1 };
+        std::array<int8_t, 32> sideset_pindirs = { -1 };
     } gpio;
 
     // FIFOs
@@ -94,6 +94,7 @@ public:
 
     void executeInstruction();
     void tick(); // Forward a clock
+    PioStateMachine();
 
     // Instruction handlers
     void executeJmp();
