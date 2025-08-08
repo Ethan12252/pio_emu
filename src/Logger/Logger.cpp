@@ -50,7 +50,8 @@ void Logger::setLogFile(const std::string& filename)
     }
 }
 
-void Logger::log(LogLevel level, const std::string& message)
+// Update log signature to accept file name
+void Logger::log(LogLevel level, const std::string& message, int lineNumber, const char* fileName)
 {
     if (level < currentLevel_)
         return;
@@ -65,11 +66,11 @@ void Logger::log(LogLevel level, const std::string& message)
         textColor = fmt::color::light_blue;
         break;
     case LogLevel::LEVEL_INFO:
-        levelStr = "INFO";
+        levelStr = "INFO ";
         textColor = fmt::color::light_green;
         break;
     case LogLevel::LEVEL_WARNING:
-        levelStr = "WARNING";
+        levelStr = "WARN ";
         textColor = fmt::color::green_yellow;
         break;
     case LogLevel::LEVEL_ERROR:
@@ -82,11 +83,12 @@ void Logger::log(LogLevel level, const std::string& message)
         break;
     }
 
-    std::string plainMessage = fmt::format("[{}] {}\n", levelStr, message);
+    std::string plainMessage = fmt::format("[{}] {} (at file:{} line:{})\n", levelStr, message, fileName, lineNumber);
     
     if (consoleOutput_)
     {
-        fmt::print(fg(textColor), "[{}] {}\n", levelStr, message);
+        fmt::print(fg(textColor), "[{}] {} ", levelStr, message);
+        fmt::print(fg(fmt::color::gray), "(at file:{} line:{})\n", fileName, lineNumber);
     }
 
     if (fileOutput_ && logFile_.is_open())
@@ -96,27 +98,35 @@ void Logger::log(LogLevel level, const std::string& message)
     }
 }
 
-void Logger::debug(const std::string& message)
+// Helper macros for logging
+#define LOG_DEBUG(logger, msg)   logger.debug(msg, __LINE__, __FILE__)
+#define LOG_INFO(logger, msg)    logger.info(msg, __LINE__, __FILE__)
+#define LOG_WARNING(logger, msg) logger.warning(msg, __LINE__, __FILE__)
+#define LOG_ERROR(logger, msg)   logger.error(msg, __LINE__, __FILE__)
+#define LOG_FATAL(logger, msg)   logger.fatal(msg, __LINE__, __FILE__)
+
+// Update helper methods to accept line/file
+void Logger::debug(const std::string& message, int lineNumber, const char* fileName)
 {
-    log(LogLevel::LEVEL_DEBUG, message);
+    log(LogLevel::LEVEL_DEBUG, message, lineNumber, fileName);
 }
 
-void Logger::info(const std::string& message)
+void Logger::info(const std::string& message, int lineNumber, const char* fileName)
 {
-    log(LogLevel::LEVEL_INFO, message);
+    log(LogLevel::LEVEL_INFO, message, lineNumber, fileName);
 }
 
-void Logger::warning(const std::string& message)
+void Logger::warning(const std::string& message, int lineNumber, const char* fileName)
 {
-    log(LogLevel::LEVEL_ERROR, message);
+    log(LogLevel::LEVEL_WARNING, message, lineNumber, fileName);
 }
 
-void Logger::error(const std::string& message)
+void Logger::error(const std::string& message, int lineNumber, const char* fileName)
 {
-    log(LogLevel::LEVEL_ERROR, message);
+    log(LogLevel::LEVEL_ERROR, message, lineNumber, fileName);
 }
 
-void Logger::fatal(const std::string& message)
+void Logger::fatal(const std::string& message, int lineNumber, const char* fileName)
 {
-    log(LogLevel::LEVEL_FATAL, message);
+    log(LogLevel::LEVEL_FATAL, message, lineNumber, fileName);
 }

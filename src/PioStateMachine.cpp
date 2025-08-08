@@ -31,13 +31,34 @@ void PioStateMachine::tick()
         goto update_and_exit;
     else
     {
-        // Handle delay
+        /* ----- Handle delay ----- */
         if (regs.delay > 0)
         {
             regs.delay--;
             goto update_and_exit;
         }
 
+        /* ----- Get new instruction and execute it ----- */
+        currentInstruction = instructionMemory[regs.pc];
+        executeInstruction();
+
+        /* ----- Update the 'status' depending on RxFIFO or TxFIFO count ----- */
+        if (settings.status_sel == 0)
+        {
+            // For Tx FIFO, All-ones if TX FIFO count < N, otherwise all-zeroes
+            regs.status = (tx_fifo_count < settings.fifo_level_N) ? 0xff'ff'ff'ff : 0;
+        }
+        else if(settings.status_sel == 1)
+        {
+            // For Rx FIFO
+            regs.status = (rx_fifo_count < settings.fifo_level_N) ? 0xff'ff'ff'ff : 0;
+        }
+        else
+        {
+            LOG_ERROR("Unknow status_sel");
+        }
+
+        /* ----- Update PC ----- */
         // for 'jmp' and 'wait' instruction
         if (skip_increase_pc == false)  // We should increase PC as normal 
         {
@@ -56,32 +77,17 @@ void PioStateMachine::tick()
             }
             skip_increase_pc = false;
         }
-
-        // Get new instruction and execute it
-        currentInstruction = instructionMemory[regs.pc];
-        executeInstruction();
-
-        // Update the 'status' depending on RxFIFO or TxFIFO count
-        if (settings.status_sel == 0)
-        {
-            // For Tx FIFO, All-ones if TX FIFO count < N, otherwise all-zeroes
-            regs.status = (tx_fifo_count < settings.fifo_level_N) ? 0xff'ff'ff'ff : 0;
-        }
-        else if(settings.status_sel == 1)
-        {
-            // For Rx FIFO
-            regs.status = (rx_fifo_count < settings.fifo_level_N) ? 0xff'ff'ff'ff : 0;
-        }
-        else
-        {
-            LOG_ERROR("Unknow status_sel");
-        }
     }
 
 update_and_exit:
     setAllGpio();
     clock++;
     return;
+}
+
+PioStateMachine::PioStateMachine()
+{
+
 }
 
 void PioStateMachine::doSideSet(u32 delay_side_set_field)

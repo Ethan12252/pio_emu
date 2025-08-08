@@ -81,8 +81,8 @@ public:
     // FIFOs
     void push_to_rx_fifo();
     void pull_from_tx_fifo();
-    std::array<uint32_t, 4> tx_fifo;
-    std::array<uint32_t, 4> rx_fifo;
+    std::array<uint32_t, 4> tx_fifo = { 0 };
+    std::array<uint32_t, 4> rx_fifo = { 0 };
     int tx_fifo_count = 0;
     int rx_fifo_count = 0;
     bool push_is_stalling = false; // TODO: use of these variable need check
