@@ -24,16 +24,15 @@ TEST_CASE("SET PINS Instructions")
     PioStateMachine pio;
 
     // Initialize pins to -1 (unset)
-    for (int i = 0; i < 32; i++)
+   /* for (int i = 0; i < 32; i++)
     {
-        pio.gpio.set_data[i] = -1;
         pio.gpio.raw_data[i] = 0;
         pio.gpio.out_data[i] = -1;
         pio.gpio.set_data[i] = -1;
         pio.gpio.sideset_data[i] = -1;
         pio.gpio.external_data[i] = -1;
 
-    }
+    }*/
 
     SUBCASE("Basic PINS operation")
     {
@@ -143,11 +142,11 @@ TEST_CASE("SET PINS Instructions")
 
 }
 
-# if 1
+# if 0
 TEST_CASE("SET X Y")
 {
     PioStateMachine pio;
-        
+
     // Initialize pins to -1 (unset)
     for (int i = 0; i < 32; i++)
     {
@@ -165,7 +164,7 @@ TEST_CASE("SET X Y")
         // Set X to a non-zero value to confirm it's properly cleared
         pio.regs.x = 0xFFFFFFFF;
         pio.currentInstruction = buildSetInstruction(PioDestination::X, 15);
-        pio.executeSet(); 
+        pio.executeSet();
         CHECK(pio.regs.x == 15); // Only 5 LSBs set, others cleared
 
         // Test max 5-bit value

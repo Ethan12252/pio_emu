@@ -87,7 +87,16 @@ update_and_exit:
 
 PioStateMachine::PioStateMachine()
 {
+    gpio.raw_data.fill(-1);
+    gpio.set_data.fill(-1);
+    gpio.out_data.fill(-1);
+    gpio.external_data.fill(-1);
+    gpio.sideset_data.fill(-1);
 
+    gpio.pindirs.fill(-1);
+    gpio.set_pindirs.fill(-1);
+    gpio.out_pindirs.fill(-1);
+    gpio.sideset_pindirs.fill(-1);
 }
 
 void PioStateMachine::doSideSet(u32 delay_side_set_field)
