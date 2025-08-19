@@ -27,12 +27,15 @@ TEST_CASE("SET instruction only")
     SUBCASE("SET XY Register")
     {
         /* Build Instructions */
+        int instr_base = 5;
+        pio.instructionMemory[instr_base + 0] = buildSetInstruction(PioDestination::X, 15);
+        pio.instructionMemory[instr_base + 1] = buildSetInstruction(PioDestination::X, 31);
+        pio.instructionMemory[instr_base + 2] = buildSetInstruction(PioDestination::X, 0xFF);
+        pio.instructionMemory[instr_base + 3] = buildSetInstruction(PioDestination::Y, 15);
+        pio.instructionMemory[instr_base + 4] = buildSetInstruction(PioDestination::Y, 31);
+        pio.instructionMemory[instr_base + 5] = buildSetInstruction(PioDestination::Y, 0xFF);
 
-        pio.instructionMemory[0] = buildSetInstruction(PioDestination::X, 15);
-        pio.instructionMemory[1] = buildSetInstruction(PioDestination::X, 31);
-        pio.instructionMemory[2] = buildSetInstruction(PioDestination::X, 0xFF);
-
-        pio.regs.pc = 0;
+        pio.regs.pc = 5;
         
         // 1: Set X to a non-zero value to confirm it's properly cleared
         pio.regs.x = 0xFFFFFFFF;
@@ -48,26 +51,64 @@ TEST_CASE("SET instruction only")
         pio.regs.x = 0xFFFFFFFF;
         pio.tick();
         CHECK(pio.regs.x == 31); // 0xFF & 0x1F = 31
-    }
 
-    SUBCASE("SET Y Register")
-    {
-        // Set Y to a non-zero value to confirm it's properly cleared
+        // 4: Set Y to a non-zero value to confirm it's properly cleared
         pio.regs.y = 0xFFFFFFFF;
-        pio.currentInstruction = buildSetInstruction(PioDestination::Y, 15);
-        pio.executeSet();
+        pio.tick();
         CHECK(pio.regs.y == 15); // Only 5 LSBs set, others cleared
 
-        // Test max 5-bit value
+        // 5: Test max 5-bit value
         pio.regs.y = 0xFFFFFFFF;
-        pio.currentInstruction = buildSetInstruction(PioDestination::Y, 31);
-        pio.executeSet();
+        pio.tick();
         CHECK(pio.regs.y == 31);
 
-        // Test value masking to 5 bits
+        // 6: Test value masking to 5 bits
         pio.regs.y = 0xFFFFFFFF;
-        pio.currentInstruction = buildSetInstruction(PioDestination::Y, 0xFF);
-        pio.executeSet();
+        pio.tick();
+        CHECK(pio.regs.y == 31); // 0xFF & 0x1F = 31
+    }
+
+    SUBCASE("SET XY Register With PC Wrap")
+    {
+        // Default wrap is 0~31
+        /* Build Instructions */
+        pio.instructionMemory[29] = buildSetInstruction(PioDestination::X, 15);
+        pio.instructionMemory[30] = buildSetInstruction(PioDestination::X, 31);
+        pio.instructionMemory[31] = buildSetInstruction(PioDestination::X, 0xFF);
+        pio.instructionMemory[0] = buildSetInstruction(PioDestination::Y, 15);
+        pio.instructionMemory[1] = buildSetInstruction(PioDestination::Y, 31);
+        pio.instructionMemory[2] = buildSetInstruction(PioDestination::Y, 0xFF);
+
+        pio.regs.pc = 29;  
+
+        // 1: Set X to a non-zero value to confirm it's properly cleared
+        pio.regs.x = 0xFFFFFFFF;
+        pio.tick();
+        CHECK(pio.regs.x == 15); // Only 5 LSBs set, others cleared
+
+        // 2: Test max 5-bit value
+        pio.regs.x = 0xFFFFFFFF;
+        pio.tick();
+        CHECK(pio.regs.x == 31);
+
+        // 3: Test value masking to 5 bits (0x1F)
+        pio.regs.x = 0xFFFFFFFF;
+        pio.tick();
+        CHECK(pio.regs.x == 31); // 0xFF & 0x1F = 31
+
+        // 4: Set Y to a non-zero value to confirm it's properly cleared
+        pio.regs.y = 0xFFFFFFFF;
+        pio.tick();
+        CHECK(pio.regs.y == 15); // Only 5 LSBs set, others cleared
+
+        // 5: Test max 5-bit value
+        pio.regs.y = 0xFFFFFFFF;
+        pio.tick();
+        CHECK(pio.regs.y == 31);
+
+        // 6: Test value masking to 5 bits
+        pio.regs.y = 0xFFFFFFFF;
+        pio.tick();
         CHECK(pio.regs.y == 31); // 0xFF & 0x1F = 31
     }
 }
