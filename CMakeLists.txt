@@ -39,6 +39,7 @@ set(PIO_TESTS
         gpioset
         doSideSet
         set_tick
+        tick
 )
 
 # Create test executables from the list

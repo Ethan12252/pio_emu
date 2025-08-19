@@ -825,18 +825,18 @@ void PioStateMachine::executeMov()
 void PioStateMachine::executeIrq()
 {
     // Obtain Instruction fields
-    u32 wait = (currentInstruction >> 5) & 1; // bit 5
+    u32 wait = (currentInstruction >> 5) & 1;  // bit 5
     u32 clear = (currentInstruction >> 6) & 1; // bit 6
     u32 index = currentInstruction & 0b1'1111; // bits 4:0
-    u32 index_msb = (index >> 4) & 1; // bit 4
+    u32 index_msb = (index >> 4) & 1;          // bit 4
 
     u32 irqNum = index & 0b111; // The 3 LSBs specify an IRQ index from 0-7. (s3.4.9.2)
     //If the MSB is set, the sm ID (0…3) is added to the IRQ index, by way of modulo-4 addition on the "two LSBs" (s3.4.9.2)  // TODO:Need spec check
     if (index_msb == 1)
     {
-        u32 index_2lsbs = irqNum & 0b11; // get the 2 LSBs
+        u32 index_2lsbs = irqNum & 0b11;                 // get the 2 LSBs
         irqNum = (index_2lsbs + stateMachineNumber) % 4; // modulo-4 addition on the "two LSBs"
-        irqNum |= (index & 0b100); // Preserve bit 2
+        irqNum |= (index & 0b100);                       // Preserve bit 2
     }
 
     // TODO: Controll flow Need spec check!

@@ -37,21 +37,21 @@ public:
     // Configuration settings
     struct Settings
     {
-        int sideset_count = 0;
+        int  sideset_count = 0;
         bool sideset_opt = false;
         bool sideset_pindirs = false;
-        int sideset_base = -1;
-        int in_base = -1;
-        int out_base = -1;
-        int set_base = -1;
-        int jmp_pin = -1;
-        int set_count = -1;
-        int out_count = -1;
-        int push_threshold = 32;
-        int pull_threshold = 32;
-        int fifo_level_N = -1;
-        int warp_start= 0;
-        int warp_end = 31;
+        int  sideset_base = -1;
+        int  in_base = -1;
+        int  out_base = -1;
+        int  set_base = -1;
+        int  jmp_pin = -1;
+        int  set_count = -1;
+        int  out_count = -1;
+        int  push_threshold = 32;
+        int  pull_threshold = 32;
+        int  fifo_level_N = -1;
+        int  warp_start = 0;
+        int  warp_end = 31;
         bool in_shift_right = false;
         bool out_shift_right = false;
         bool in_shift_autopush = false;
@@ -71,8 +71,8 @@ public:
         std::array<int8_t, 32> external_data;
         std::array<int8_t, 32> sideset_data;
 
-        // pindirs
-        std::array<int8_t, 32> pindirs;  // 0 for output
+        // pindirs (0 for output, 1 for input)
+        std::array<int8_t, 32> pindirs;  // 
         std::array<int8_t, 32> set_pindirs;
         std::array<int8_t, 32> out_pindirs;
         std::array<int8_t, 32> sideset_pindirs;
@@ -111,5 +111,5 @@ public:
     void setAllGpio();
 
 private:
-    void tick_handle_delay();
+    /*void tick_handle_delay();*/
 };
