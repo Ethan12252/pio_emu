@@ -98,11 +98,11 @@ PioStateMachine::PioStateMachine()
     gpio.sideset_pindirs.fill(-1);
 }
 
-void PioStateMachine::doSideSet(u16 delay_side_set_field)
+void PioStateMachine::doSideSet(uint16_t delay_side_set_field)
 {
     if (settings.sideset_opt) // sideset optional bit enable
     {
-        if ((delay_side_set_field >> 4) & 1) // check if msb is set (do sideset) TODO: Check opt bit encoding
+        if ((delay_side_set_field >> 4) & 1) // check if msb is set (do sideset) 
         {
             for (int i = 0; i < settings.sideset_count - 1; i++) // sideset_count - 1 (opt bit)
             {
@@ -215,9 +215,19 @@ void PioStateMachine::executeInstruction()
     u16 isPush = (currentInstruction >> 7) & 1u; // bit 7 = 0 為 PUSH, = 1 為 PULL
     u16 delay_side_set_field = (currentInstruction >> 8) & 0b11111; // bit 12:8
 
-    // Do side set (s3.5.1: Sideset take place before the instrucion)
-    PioStateMachine::doSideSet(delay_side_set_field);
+    // --- Extract delay and side-set bits ---
+    //
+    // encoding: from s3.4.1 delay:up to 5 LSBs side-set: up to 5 MSBs
+    //      [side-set-en(optional,1 bit)][side-set][delay]
+    settings.sideset_count = settings.sideset_opt ? (settings.sideset_count - 1) : settings.sideset_count;
+    u16 delay_bit_count = 5 - settings.sideset_count - (settings.sideset_opt ? 1 : 0);
+    // extract the delay filed
+    regs.delay = delay_side_set_field & ((1 << delay_bit_count) - 1);
 
+    // --- Do side set (s3.5.1: Sideset take place before the instrucion) --- 
+    PioStateMachine::doSideSet(delay_side_set_field);
+    
+    // --- Dispatch the instruction handler --- 
     switch (opcode)
     {
     case 0b000: // JMP
