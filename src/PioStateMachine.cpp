@@ -117,10 +117,14 @@ void PioStateMachine::doSideSet(uint16_t delay_side_set_field)
     }
     else // sideset is needed for every instruction
     {
+        u16 delay_bit_count = settings.sideset_opt ? 5 - settings.sideset_count - 1 : 5 - settings.sideset_count;
+        u16 sideSetField = delay_side_set_field >> delay_bit_count;
         for (int i = 0; i < settings.sideset_count; i++) // full sideset_count
         {
-            u16 bitVal = (delay_side_set_field >> i) & 1;
+            u16 bitVal = (sideSetField >> i) & 1;
+
             u16 pinNum = (settings.sideset_base + i) % 32;
+
             if (settings.sideset_to_pindirs == true) // to pindir
                 gpio.sideset_pindirs[pinNum] = bitVal;
             else
