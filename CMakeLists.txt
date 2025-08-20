@@ -40,6 +40,7 @@ set(PIO_TESTS
         doSideSet
         set_tick
         tick
+        jmp
 )
 
 # Create test executables from the list

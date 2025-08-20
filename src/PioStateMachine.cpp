@@ -48,7 +48,7 @@ void PioStateMachine::tick()
             // For Tx FIFO, All-ones if TX FIFO count < N, otherwise all-zeroes
             regs.status = (tx_fifo_count < settings.fifo_level_N) ? 0xff'ff'ff'ff : 0;
         }
-        else if(settings.status_sel == 1)
+        else if (settings.status_sel == 1)
         {
             // For Rx FIFO
             regs.status = (rx_fifo_count < settings.fifo_level_N) ? 0xff'ff'ff'ff : 0;
@@ -291,8 +291,10 @@ void PioStateMachine::executeJmp()
     case 0b010: // X--: scratch X non-zero, prior to decrement
         //before the decrement took place: if the register is initially nonzero, the branch is taken.  (s3.4.2.2)
         if (regs.x != 0)
+        {
             doJump = true;
-        regs.x--; // JMP X-- and JMP Y-- always decrement scratch register
+            regs.x--; // JMP X-- and JMP Y-- always decrement scratch register
+        }
         break;
     case 0b011: // !Y: scratch Y zero
         if (regs.y == 0)
@@ -300,8 +302,10 @@ void PioStateMachine::executeJmp()
         break;
     case 0b100: // Y--: scratch Y non-zero, prior to decrement
         if (regs.y != 0)
+        {
             doJump = true;
-        regs.y--;
+            regs.y--;
+        }
         break;
     case 0b101: // X!=Y: scratch X not equal scratch Y
         if (regs.x != regs.y)
