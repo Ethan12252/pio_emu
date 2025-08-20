@@ -1,6 +1,6 @@
 #include "PioStateMachine.h"
 
-using u32 = uint32_t;
+using u16 = uint16_t;
 
 void PioStateMachine::push_to_rx_fifo()
 {
@@ -82,7 +82,6 @@ void PioStateMachine::tick()
 update_and_exit:
     setAllGpio();
     clock++;
-    return;
 }
 
 PioStateMachine::PioStateMachine()
@@ -99,7 +98,7 @@ PioStateMachine::PioStateMachine()
     gpio.sideset_pindirs.fill(-1);
 }
 
-void PioStateMachine::doSideSet(u32 delay_side_set_field)
+void PioStateMachine::doSideSet(u16 delay_side_set_field)
 {
     if (settings.sideset_opt) // sideset optional bit enable
     {
@@ -107,8 +106,8 @@ void PioStateMachine::doSideSet(u32 delay_side_set_field)
         {
             for (int i = 0; i < settings.sideset_count - 1; i++) // sideset_count - 1 (opt bit)
             {
-                u32 bitVal = (delay_side_set_field >> i) & 1;
-                u32 pinNum = (settings.sideset_base + i) % 32;
+                u16 bitVal = (delay_side_set_field >> i) & 1;
+                u16 pinNum = (settings.sideset_base + i) % 32;
                 if (settings.sideset_pindirs == true) // to pindir
                     gpio.sideset_pindirs[pinNum] = bitVal;
                 else
@@ -120,8 +119,8 @@ void PioStateMachine::doSideSet(u32 delay_side_set_field)
     {
         for (int i = 0; i < settings.sideset_count; i++) // full sideset_count
         {
-            u32 bitVal = (delay_side_set_field >> i) & 1;
-            u32 pinNum = (settings.sideset_base + i) % 32;
+            u16 bitVal = (delay_side_set_field >> i) & 1;
+            u16 pinNum = (settings.sideset_base + i) % 32;
             if (settings.sideset_pindirs == true) // to pindir
                 gpio.sideset_pindirs[pinNum] = bitVal;
             else
@@ -212,9 +211,9 @@ void PioStateMachine::setAllGpio() // TODO: Check with 'mov' 'set' 'out' instruc
 void PioStateMachine::executeInstruction()
 {
     // Get Opcode field (15:13)
-    u32 opcode = (currentInstruction & 0xe000) >> 13;
-    u32 isPush = (currentInstruction >> 7) & 1u; // bit 7 = 0 為 PUSH, = 1 為 PULL
-    u32 delay_side_set_field = (currentInstruction >> 8) & 0b11111; // bit 12:8
+    u16 opcode = (currentInstruction & 0xe000) >> 13;
+    u16 isPush = (currentInstruction >> 7) & 1u; // bit 7 = 0 為 PUSH, = 1 為 PULL
+    u16 delay_side_set_field = (currentInstruction >> 8) & 0b11111; // bit 12:8
 
     // Do side set (s3.5.1: Sideset take place before the instrucion)
     PioStateMachine::doSideSet(delay_side_set_field);
@@ -274,9 +273,9 @@ void PioStateMachine::executeJmp()
 {
     // Obtain Instruction fields
     // bit 7:5 -> condition
-    u32 condition = (currentInstruction >> 5) & 0b111;
+    u16 condition = (currentInstruction >> 5) & 0b111;
     // bit 4:0 -> Address
-    u32 address = currentInstruction & 0b1'1111;
+    u16 address = currentInstruction & 0b1'1111;
 
     bool doJump = false;
 
@@ -336,9 +335,9 @@ void PioStateMachine::executeJmp()
 void PioStateMachine::executeWait()
 {
     // Obtain Instruction fields
-    u32 polarity = (currentInstruction >> 7) & 1; // bit 7
-    u32 source = (currentInstruction >> 5) & 0b11; // bit 6:5
-    u32 index = currentInstruction & 0b1'1111; // bit 4:0
+    u16 polarity = (currentInstruction >> 7) & 1; // bit 7
+    u16 source = (currentInstruction >> 5) & 0b11; // bit 6:5
+    u16 index = currentInstruction & 0b1'1111; // bit 4:0
 
     bool condIsNotMet = true;
     switch (source)
@@ -359,12 +358,12 @@ void PioStateMachine::executeWait()
         break;
     case 0b10: // IRQ: wait for PIO IRQ flag selected by Index (見3.4.9.2)  TODO: Need check!(irq number calculation)
     {
-        u32 index_msb = (index >> 4) & 1; // bit 4
-        u32 irq_wait_num = index & 0b111; // The 3 LSBs specify an IRQ index from 0-7. (s3.4.9.2)
+        u16 index_msb = (index >> 4) & 1; // bit 4
+        u16 irq_wait_num = index & 0b111; // The 3 LSBs specify an IRQ index from 0-7. (s3.4.9.2)
         //If the MSB is set, the sm ID (0…3) is added to the IRQ index, by way of modulo-4 addition on the "two LSBs" (s3.4.9.2)  TODO:Need spec check
         if (index_msb == 1)
         {
-            u32 index_2lsbs = irq_wait_num & 0b11; // get the 2 LSBs
+            u16 index_2lsbs = irq_wait_num & 0b11; // get the 2 LSBs
             irq_wait_num = (index_2lsbs + stateMachineNumber) % 4; // modulo-4 addition on the "two LSBs"
             irq_wait_num |= (index & 0b100); // Preserve bit 2
         }
@@ -400,16 +399,16 @@ void PioStateMachine::executeIn()
     }
 
     // Obtain Instruction fields
-    u32 source = (currentInstruction >> 5) & 0b111; // bit 7:5
-    u32 bitCount = currentInstruction & 0b1'1111; // bit 4:0
+    u16 source = (currentInstruction >> 5) & 0b111; // bit 7:5
+    u16 bitCount = currentInstruction & 0b1'1111; // bit 4:0
 
     if (bitCount == 0)
         bitCount = 32; // 32 is encoded as 0b00000
 
-    u32 mask = (1 << bitCount) - 1;
+    u16 mask = (1 << bitCount) - 1;
     if (bitCount == 32)
         mask = 0xff'ff'ff'ff;
-    u32 data = 0;
+    u16 data = 0;
 
     switch (source)
     {
@@ -420,10 +419,10 @@ void PioStateMachine::executeIn()
             return;
         }
         // Loop through the pins we need to read
-        for (u32 i = 0; i < bitCount; i++)
+        for (u16 i = 0; i < bitCount; i++)
         {
             // Calc the actual GPIO pin number (wrap around if > 31)
-            u32 readPinNumber = (settings.in_base + i) % 32;
+            u16 readPinNumber = (settings.in_base + i) % 32;
             // Shift the pin state to the correct position in data
             data |= ((gpio.raw_data[readPinNumber] & 1) << i);
         }
@@ -492,11 +491,11 @@ void PioStateMachine::executeIn()
 void PioStateMachine::executeOut()
 {
     // Obtain Instruction fields
-    u32 destination = (currentInstruction >> 5) & 0b111; // bit 7:5
-    u32 bitCount = currentInstruction & 0b1'1111; // bit 4:0
+    u16 destination = (currentInstruction >> 5) & 0b111; // bit 7:5
+    u16 bitCount = currentInstruction & 0b1'1111; // bit 4:0
     if (bitCount == 0) // 32 is encoded as 0b000
         bitCount = 32;
-    u32 osrOriginal = regs.osr; // For EXEC
+    u16 osrOriginal = regs.osr; // For EXEC
 
     // (s3.4.5.2):autopull
     if (settings.autopull_enable)
@@ -519,8 +518,8 @@ void PioStateMachine::executeOut()
     }
 
     // Get data out of osr
-    u32 data = 0;
-    u32 mask = (1 << bitCount) - 1;
+    u16 data = 0;
+    u16 mask = (1 << bitCount) - 1;
     if (bitCount == 32) // mask calc when bitcount=32 will fail(overflow)
         mask = 0xff'ff'ff'ff;
     if (settings.out_shift_right)
@@ -555,10 +554,10 @@ void PioStateMachine::executeOut()
             return;
         }
         // Loop through the pins we need to set
-        for (u32 i = 0; i < bitCount; i++)
+        for (u16 i = 0; i < bitCount; i++)
         {
             // Calc the actual GPIO pin number (wrap around if > 31)
-            u32 writePinNumber = (settings.out_base + i) % 32;
+            u16 writePinNumber = (settings.out_base + i) % 32;
             gpio.out_data[writePinNumber] = (data & (1 << i)) ? 1 : 0;
         }
         break;
@@ -580,7 +579,7 @@ void PioStateMachine::executeOut()
         {
             for (int i = 0; i < bitCount; i++)
             {
-                u32 outPin = (settings.out_base + i) % 32;
+                u16 outPin = (settings.out_base + i) % 32;
                 gpio.out_pindirs[outPin] = (data & (1 << i)) ? 1 : 0;
             }
         }
@@ -609,8 +608,8 @@ void PioStateMachine::executeOut()
 void PioStateMachine::executePush()
 {
     // Obtain Instruction fields
-    u32 ifFull = (currentInstruction >> 6) & 1; // bits 6
-    u32 block = (currentInstruction >> 5) & 1; // bits 5
+    u16 ifFull = (currentInstruction >> 6) & 1; // bits 6
+    u16 block = (currentInstruction >> 5) & 1; // bits 5
 
     // Check if there's space for rx fifo
     if (rx_fifo_count < 4)
@@ -649,8 +648,8 @@ void PioStateMachine::executePush()
 void PioStateMachine::executePull()
 {
     // Obtain Instruction fields
-    u32 ifEmpty = (currentInstruction >> 6) & 1; // bits 6
-    u32 block = (currentInstruction >> 5) & 1; // bits 5
+    u16 ifEmpty = (currentInstruction >> 6) & 1; // bits 6
+    u16 block = (currentInstruction >> 5) & 1; // bits 5
 
     // Check if tx fifo is empty (nothing to pull)
     if (tx_fifo_count != 0)
@@ -691,12 +690,12 @@ void PioStateMachine::executePull()
 void PioStateMachine::executeMov()
 {
     // Obtain Instruction fields
-    u32 destination = (currentInstruction >> 5) & 0b111; // bits 7:5
-    u32 op = (currentInstruction >> 3) & 0b11; // bits 4:3
-    u32 source = currentInstruction & 0b111; // bits 2:0
+    u16 destination = (currentInstruction >> 5) & 0b111; // bits 7:5
+    u16 op = (currentInstruction >> 3) & 0b11; // bits 4:3
+    u16 source = currentInstruction & 0b111; // bits 2:0
 
     // data to be moved
-    u32 data = 0;
+    u16 data = 0;
 
     // --- Source Handling ---
     switch (source)
@@ -708,10 +707,10 @@ void PioStateMachine::executeMov()
             return;
         }
         // Loop through the pins we need to read
-        for (u32 i = 0; i < 32; i++)
+        for (u16 i = 0; i < 32; i++)
         {
             // Calc the actual GPIO pin number (wrap around if > 31)
-            u32 readPinNumber = (settings.in_base + i) % 32;
+            u16 readPinNumber = (settings.in_base + i) % 32;
             // Shift the pin state to the correct position in data
             data |= ((gpio.raw_data[readPinNumber] & 1) << i);
         }
@@ -752,7 +751,7 @@ void PioStateMachine::executeMov()
         break;
     case 0b10: // bit-reverse
     {
-        u32 old_data = data;
+        u16 old_data = data;
         data = 0;
         for (int i = 0; i < 32; i++) // function checked
         {
@@ -782,11 +781,11 @@ void PioStateMachine::executeMov()
             return;
         }
         // Loop through the pins we need to write
-        for (u32 i = 0; i < settings.out_count; i++)
+        for (u16 i = 0; i < settings.out_count; i++)
             // P.337 OUT_COUNT: The number of pins asserted by ... MOV PINS instruction.
         {
             // Calc the actual GPIO pin number (wrap around if > 31)
-            u32 writePinNumber = (settings.out_base + i) % 32;
+            u16 writePinNumber = (settings.out_base + i) % 32;
             gpio.out_data[writePinNumber] = (data & (1 << i)) ? 1 : 0;
         }
         break;
@@ -825,16 +824,16 @@ void PioStateMachine::executeMov()
 void PioStateMachine::executeIrq()
 {
     // Obtain Instruction fields
-    u32 wait = (currentInstruction >> 5) & 1;  // bit 5
-    u32 clear = (currentInstruction >> 6) & 1; // bit 6
-    u32 index = currentInstruction & 0b1'1111; // bits 4:0
-    u32 index_msb = (index >> 4) & 1;          // bit 4
+    u16 wait = (currentInstruction >> 5) & 1;  // bit 5
+    u16 clear = (currentInstruction >> 6) & 1; // bit 6
+    u16 index = currentInstruction & 0b1'1111; // bits 4:0
+    u16 index_msb = (index >> 4) & 1;          // bit 4
 
-    u32 irqNum = index & 0b111; // The 3 LSBs specify an IRQ index from 0-7. (s3.4.9.2)
+    u16 irqNum = index & 0b111; // The 3 LSBs specify an IRQ index from 0-7. (s3.4.9.2)
     //If the MSB is set, the sm ID (0…3) is added to the IRQ index, by way of modulo-4 addition on the "two LSBs" (s3.4.9.2)  // TODO:Need spec check
     if (index_msb == 1)
     {
-        u32 index_2lsbs = irqNum & 0b11;                 // get the 2 LSBs
+        u16 index_2lsbs = irqNum & 0b11;                 // get the 2 LSBs
         irqNum = (index_2lsbs + stateMachineNumber) % 4; // modulo-4 addition on the "two LSBs"
         irqNum |= (index & 0b100);                       // Preserve bit 2
     }
@@ -877,8 +876,8 @@ void PioStateMachine::executeIrq()
 void PioStateMachine::executeSet()
 {
     // Obtain Instruction fields
-    u32 destinition = (currentInstruction >> 5) & 0b111; // bit 7:5
-    u32 data = currentInstruction & 0b1'1111; // bit 4:0
+    u16 destinition = (currentInstruction >> 5) & 0b111; // bit 7:5
+    u16 data = currentInstruction & 0b1'1111; // bit 4:0
 
     switch (destinition)
     {
@@ -891,7 +890,7 @@ void PioStateMachine::executeSet()
         {
             for (int i = 0; i < settings.set_count; i++)
             {
-                u32 setPin = (settings.set_base + i) % 32;
+                u16 setPin = (settings.set_base + i) % 32;
                 gpio.set_data[setPin] = (data & (1 << i)) ? 1 : 0;
             }
         }
@@ -913,7 +912,7 @@ void PioStateMachine::executeSet()
         {
             for (int i = 0; i < settings.set_count; i++)
             {
-                u32 setPin = (settings.set_base + i) % 32;
+                u16 setPin = (settings.set_base + i) % 32;
                 gpio.set_pindirs[setPin] = (data & (1 << i)) ? 1 : 0;
             }
         }

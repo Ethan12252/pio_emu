@@ -2,7 +2,7 @@
 #include <cstdint>
 #include "PioStateMachine.h"
 
-using u32 = uint32_t;
+using u16 = uint32_t;
 int main()
 {
     PioStateMachine pio0;

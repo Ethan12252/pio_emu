@@ -7,9 +7,9 @@
 class PioStateMachine
 {
 public:
-    uint32_t instructionMemory[32];
-    uint32_t currentInstruction;
-    uint32_t stateMachineNumber;
+    std::array<uint16_t, 32> instructionMemory;
+    uint16_t currentInstruction;
+    uint16_t stateMachineNumber;
 
     // Runtime emu flags
     int jmp_to = -1;
@@ -72,7 +72,7 @@ public:
         std::array<int8_t, 32> sideset_data;
 
         // pindirs (0 for output, 1 for input)
-        std::array<int8_t, 32> pindirs;  // 
+        std::array<int8_t, 32> pindirs;  
         std::array<int8_t, 32> set_pindirs;
         std::array<int8_t, 32> out_pindirs;
         std::array<int8_t, 32> sideset_pindirs;
@@ -107,7 +107,7 @@ public:
     void executeIrq();
     void executeSet();
 
-    void doSideSet(uint32_t delay_side_set_field);
+    void doSideSet(uint16_t delay_side_set_field);
     void setAllGpio();
 
 private:

@@ -2,10 +2,25 @@
 #include <doctest/doctest.h>
 #include "../../src/PioStateMachine.h"
 #include <algorithm>
+#include <cstdint>
 
 // Test fixture for PioStateMachine tests
 class PioStateMachineFixture
 {
+public:
+    PioStateMachineFixture()
+    {
+        // Fill the instruction memory with 'nop' ( mov y, y ) 
+        const uint16_t nop_inst = (0b101 << 13) | (0b010 << 5) | (0b00 << 3) | 0b010;
+        pio.instructionMemory.fill(nop_inst);
+        pio.regs.pc = 0;
+    }
+
+    ~PioStateMachineFixture()
+    {
+        resetGpioArrays(-1);
+    }
+
 protected:
     PioStateMachine pio;
 
@@ -57,8 +72,7 @@ TEST_CASE_FIXTURE(PioStateMachineFixture, "PioStateMachine::setAllGpio tests")
     SUBCASE("Initial state should not modify raw_data")
     {
         resetGpioArrays(-1);
-
-        pio.setAllGpio();
+        pio.tick();
 
         // Check if raw_data remains 0 (initial value)
         checkPinsNotIn(pio.gpio.raw_data, {}, 0);
@@ -75,7 +89,7 @@ TEST_CASE_FIXTURE(PioStateMachineFixture, "PioStateMachine::setAllGpio tests")
         // Set set_data pin 3, 8 to 1
         setPins(pio.gpio.set_data, {3, 8}, 1);
 
-        pio.setAllGpio();
+        pio.tick();
 
         checkPins(pio.gpio.raw_data, {0, 3, 5, 8}, 1);
 
@@ -94,7 +108,7 @@ TEST_CASE_FIXTURE(PioStateMachineFixture, "PioStateMachine::setAllGpio tests")
         // Set sideset_data with conflicting value on pin 0
         setPins(pio.gpio.sideset_data, {0, 2}, 0);
 
-        pio.setAllGpio();
+        pio.tick();
 
         // sideset should override out for pin 0
         CHECK(pio.gpio.raw_data[0] == 0); // sideset wins
@@ -115,7 +129,7 @@ TEST_CASE_FIXTURE(PioStateMachineFixture, "PioStateMachine::setAllGpio tests")
         // conflict on pin 0, 2
         setPins(pio.gpio.external_data, {0, 1, 2}, 1);
 
-        pio.setAllGpio();
+        pio.tick();
 
         // external should override everything
         CHECK(pio.gpio.raw_data[0] == 1); // external wins over side-set and out
@@ -126,7 +140,7 @@ TEST_CASE_FIXTURE(PioStateMachineFixture, "PioStateMachine::setAllGpio tests")
     SUBCASE("Initial state should not modify pindirs")
     {
         resetGpioArrays(-1);
-        pio.setAllGpio();
+        pio.tick();
 
         // should reamin default 0 (output)
         checkPinsNotIn(pio.gpio.pindirs, {}, 0);
@@ -138,7 +152,7 @@ TEST_CASE_FIXTURE(PioStateMachineFixture, "PioStateMachine::setAllGpio tests")
 
         setPins(pio.gpio.out_pindirs, {0, 1, 2}, 1);
 
-        pio.setAllGpio();
+        pio.tick();
 
         // should be output 1
         checkPins(pio.gpio.pindirs, {0, 1, 2}, 1);
@@ -160,7 +174,7 @@ TEST_CASE_FIXTURE(PioStateMachineFixture, "PioStateMachine::setAllGpio tests")
         // SIDESET 0,1 to 0(output)
         setPins(pio.gpio.sideset_pindirs, {0, 1}, 0);
 
-        pio.setAllGpio();
+        pio.tick();
 
         // SIDESET should override
         CHECK(pio.gpio.pindirs[0] == 0); // Override
@@ -178,7 +192,7 @@ TEST_CASE_FIXTURE(PioStateMachineFixture, "PioStateMachine::setAllGpio tests")
         // But set pin 1 to be input by out_pindirs
         setPins(pio.gpio.out_pindirs, {1}, 1);
 
-        pio.setAllGpio();
+        pio.tick();
 
         CHECK(pio.gpio.raw_data[0] == 1);
         CHECK(pio.gpio.raw_data[1] == 0); // not set because is an input
@@ -197,7 +211,7 @@ TEST_CASE_FIXTURE(PioStateMachineFixture, "PioStateMachine::setAllGpio tests")
         // data values
         setPins(pio.gpio.out_data, {0, 1, 2, 3, 4, 5}, 1);
 
-        pio.setAllGpio();
+        pio.tick();
 
         // Check pin directions
         CHECK(pio.gpio.pindirs[0] == 0); // Set by OUT
@@ -227,7 +241,7 @@ TEST_CASE_FIXTURE(PioStateMachineFixture, "PioStateMachine::setAllGpio tests")
 
         setPins(pio.gpio.external_data, {0}, 1);
 
-        pio.setAllGpio();
+        pio.tick();
 
         CHECK(pio.gpio.raw_data[0] == 1); // External wins
         CHECK(pio.gpio.raw_data[1] == 0); // Set by out_data
@@ -242,7 +256,7 @@ TEST_CASE_FIXTURE(PioStateMachineFixture, "PioStateMachine::setAllGpio tests")
 
         setPins(pio.gpio.out_data, {1, 3}, 1);
 
-        pio.setAllGpio();
+        pio.tick();
 
         checkPins(pio.gpio.raw_data, {1, 3}, 1);
         checkPinsNotIn(pio.gpio.raw_data, {1, 3}, 0);
