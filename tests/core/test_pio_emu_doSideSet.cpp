@@ -6,6 +6,8 @@
 // Test fixture for PioStateMachine tests
 class PioSideSetFixture
 {
+public:
+    const uint16_t nop_inst = (0b101 << 13) | (0b010 << 5) | (0b00 << 3) | 0b010;
 protected:
     PioStateMachine pio;
 
@@ -65,7 +67,7 @@ TEST_CASE_FIXTURE(PioSideSetFixture, "PioStateMachine::doSideSet tests")
         pio.settings.sideset_count = 0;
         pio.settings.sideset_opt = false;
         pio.settings.sideset_base = -1;
-        pio.settings.sideset_pindirs = false;
+        pio.settings.sideset_to_pindirs = false;
 
         pio.doSideSet(0x1F);
 
@@ -80,7 +82,7 @@ TEST_CASE_FIXTURE(PioSideSetFixture, "PioStateMachine::doSideSet tests")
         pio.settings.sideset_count = 1;
         pio.settings.sideset_opt = false;
         pio.settings.sideset_base = 5; // Starts at pin 5
-        pio.settings.sideset_pindirs = false;
+        pio.settings.sideset_to_pindirs = false;
 
         // side-set bits 0b00001
         pio.doSideSet(0b00001);
@@ -101,7 +103,7 @@ TEST_CASE_FIXTURE(PioSideSetFixture, "PioStateMachine::doSideSet tests")
         pio.settings.sideset_count = 3;
         pio.settings.sideset_opt = false;
         pio.settings.sideset_base = 10; // Starts at pin 10
-        pio.settings.sideset_pindirs = false;
+        pio.settings.sideset_to_pindirs = false;
 
         // sideset 0b00100
         pio.doSideSet(0b00100);
@@ -121,7 +123,7 @@ TEST_CASE_FIXTURE(PioSideSetFixture, "PioStateMachine::doSideSet tests")
         pio.settings.sideset_count = 5;
         pio.settings.sideset_opt = false;
         pio.settings.sideset_base = 2; // Starts at pin 2
-        pio.settings.sideset_pindirs = false;
+        pio.settings.sideset_to_pindirs = false;
 
         // 0b10101 pins 2, 3, 4, 5, 6
         pio.doSideSet(0b10100);
@@ -140,7 +142,7 @@ TEST_CASE_FIXTURE(PioSideSetFixture, "PioStateMachine::doSideSet tests")
         pio.settings.sideset_count = 3; // 2 data + 1 enable bit
         pio.settings.sideset_opt = true;  // enable sideset optional
         pio.settings.sideset_base = 8; // Starts at pin 8
-        pio.settings.sideset_pindirs = false;
+        pio.settings.sideset_to_pindirs = false;
 
         pio.doSideSet(0b10001); // 0b10001 -> enable=1, data=01 TODO: Check opt bit encoding
 
@@ -158,7 +160,7 @@ TEST_CASE_FIXTURE(PioSideSetFixture, "PioStateMachine::doSideSet tests")
         pio.settings.sideset_count = 3; // 2 data + 1 enable
         pio.settings.sideset_opt = true;  // enable
         pio.settings.sideset_base = 8; // pin 8
-        pio.settings.sideset_pindirs = false;
+        pio.settings.sideset_to_pindirs = false;
 
         pio.doSideSet(0x03); // 0b00011 → enable=0, data=11
 
@@ -174,7 +176,7 @@ TEST_CASE_FIXTURE(PioSideSetFixture, "PioStateMachine::doSideSet tests")
         pio.settings.sideset_count = 2;
         pio.settings.sideset_opt = false;
         pio.settings.sideset_base = 12; // Starts at pin 12
-        pio.settings.sideset_pindirs = true; // pindir
+        pio.settings.sideset_to_pindirs = true; // pindir
 
         pio.doSideSet(0b00010);
 
@@ -194,7 +196,7 @@ TEST_CASE_FIXTURE(PioSideSetFixture, "PioStateMachine::doSideSet tests")
         pio.settings.sideset_count = 2;
         pio.settings.sideset_opt = false;
         pio.settings.sideset_base = 20; // Starts at pin 20
-        pio.settings.sideset_pindirs = false;
+        pio.settings.sideset_to_pindirs = false;
 
         // Call doSideSet with value that has extra bits set beyond count
         pio.doSideSet(0x1F); // 0b11111, but we only care about the lowest 2 bits (0b11)
@@ -214,7 +216,7 @@ TEST_CASE_FIXTURE(PioSideSetFixture, "PioStateMachine::doSideSet tests")
         pio.settings.sideset_count = 3;
         pio.settings.sideset_opt = false;
         pio.settings.sideset_base = 30; // Starts at pin 30
-        pio.settings.sideset_pindirs = false;
+        pio.settings.sideset_to_pindirs = false;
 
         // Call doSideSet with value 0b111 (7 in decimal)
         pio.doSideSet(0x07);
@@ -234,7 +236,7 @@ TEST_CASE_FIXTURE(PioSideSetFixture, "PioStateMachine::doSideSet tests")
         pio.settings.sideset_count = 2;
         pio.settings.sideset_opt = false;
         pio.settings.sideset_base = 5;
-        pio.settings.sideset_pindirs = false;
+        pio.settings.sideset_to_pindirs = false;
 
         // Set up conflicting values
         pio.doSideSet(0x03); // Set pins 5 and 6 to 1 via side-set

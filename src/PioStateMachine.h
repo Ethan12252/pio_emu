@@ -39,7 +39,7 @@ public:
     {
         int  sideset_count = 0;
         bool sideset_opt = false;
-        bool sideset_pindirs = false;
+        bool sideset_to_pindirs = false; 
         int  sideset_base = -1;
         int  in_base = -1;
         int  out_base = -1;

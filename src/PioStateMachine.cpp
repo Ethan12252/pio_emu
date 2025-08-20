@@ -108,7 +108,7 @@ void PioStateMachine::doSideSet(uint16_t delay_side_set_field)
             {
                 u16 bitVal = (delay_side_set_field >> i) & 1;
                 u16 pinNum = (settings.sideset_base + i) % 32;
-                if (settings.sideset_pindirs == true) // to pindir
+                if (settings.sideset_to_pindirs == true) // to pindir
                     gpio.sideset_pindirs[pinNum] = bitVal;
                 else
                     gpio.sideset_data[pinNum] = bitVal;
@@ -121,7 +121,7 @@ void PioStateMachine::doSideSet(uint16_t delay_side_set_field)
         {
             u16 bitVal = (delay_side_set_field >> i) & 1;
             u16 pinNum = (settings.sideset_base + i) % 32;
-            if (settings.sideset_pindirs == true) // to pindir
+            if (settings.sideset_to_pindirs == true) // to pindir
                 gpio.sideset_pindirs[pinNum] = bitVal;
             else
                 gpio.sideset_data[pinNum] = bitVal;

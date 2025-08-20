@@ -168,15 +168,20 @@ TEST_CASE("JMP Delay always applies")
     pio.instructionMemory[5] = nop_inst;
 
     pio.tick();
-    CHECK(pio.regs.pc == 5);
+    CHECK(pio.regs.pc == 5); // command it self
+
     pio.tick();
-    CHECK(pio.regs.pc == 5);
+    CHECK(pio.regs.pc == 5); // 1st delay
+
     pio.tick();
-    CHECK(pio.regs.pc == 5);
+    CHECK(pio.regs.pc == 5); // 2nd delay
+
     pio.tick();
-    CHECK(pio.regs.pc == 5);
+    CHECK(pio.regs.pc == 5); // 3rd
+
     pio.tick();
-    CHECK(pio.regs.pc == 5);
+    CHECK(pio.regs.pc == 6); // 5 + 1
+
     pio.tick();
-    CHECK(pio.regs.pc == 6);
+    CHECK(pio.regs.pc == 7); // 5 + 2
 }
