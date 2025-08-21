@@ -86,7 +86,7 @@ update_and_exit:
 
 PioStateMachine::PioStateMachine()
 {
-    gpio.raw_data.fill(-1);
+    gpio.raw_data.fill(0); // TODO: check if we want 0 or -1
     gpio.set_data.fill(-1);
     gpio.out_data.fill(-1);
     gpio.external_data.fill(-1);
@@ -98,16 +98,21 @@ PioStateMachine::PioStateMachine()
     gpio.sideset_pindirs.fill(-1);
 }
 
-void PioStateMachine::doSideSet(uint16_t delay_side_set_field)
+void PioStateMachine::doSideSet(uint16_t delay_side_set_field) 
 {
-    if (settings.sideset_opt) // sideset optional bit enable
+    bool side_set_opt_bit = (delay_side_set_field >> 4) & 1;
+    if (settings.sideset_opt == true)  // Side-set is optional and the opt bit is 1 (enable)
     {
-        if ((delay_side_set_field >> 4) & 1) // check if msb is set (do sideset) 
+        if (side_set_opt_bit == 1)     // Side-set enable
         {
-            for (int i = 0; i < settings.sideset_count - 1; i++) // sideset_count - 1 (opt bit)
+            u16 delay_bit_count = 5 - settings.sideset_count - 1; // one bit less
+            u16 sideSetField = delay_side_set_field >> delay_bit_count;
+            for (int i = 0; i < settings.sideset_count; i++) 
             {
-                u16 bitVal = (delay_side_set_field >> i) & 1;
+                u16 bitVal = (sideSetField >> i) & 1;
+
                 u16 pinNum = (settings.sideset_base + i) % 32;
+
                 if (settings.sideset_to_pindirs == true) // to pindir
                     gpio.sideset_pindirs[pinNum] = bitVal;
                 else
@@ -117,9 +122,9 @@ void PioStateMachine::doSideSet(uint16_t delay_side_set_field)
     }
     else // sideset is needed for every instruction
     {
-        u16 delay_bit_count = settings.sideset_opt ? 5 - settings.sideset_count - 1 : 5 - settings.sideset_count;
+        u16 delay_bit_count = 5 - settings.sideset_count;
         u16 sideSetField = delay_side_set_field >> delay_bit_count;
-        for (int i = 0; i < settings.sideset_count; i++) // full sideset_count
+        for (int i = 0; i < settings.sideset_count; i++) 
         {
             u16 bitVal = (sideSetField >> i) & 1;
 
@@ -200,7 +205,7 @@ void PioStateMachine::setAllGpio() // TODO: Check with 'mov' 'set' 'out' instruc
             continue;
         else // modified
         {
-            if (gpio.pindirs[i] != 1) // pindir is not set to input (should not )
+            if (gpio.pindirs[i] != 1) // pindir is not set to input (should not)
                 gpio.raw_data[i] = gpio.external_data[i];
             else
             {
@@ -223,14 +228,14 @@ void PioStateMachine::executeInstruction()
     //
     // encoding: from s3.4.1 delay:up to 5 LSBs side-set: up to 5 MSBs
     //      [side-set-en(optional,1 bit)][side-set][delay]
-    settings.sideset_count = settings.sideset_opt ? (settings.sideset_count - 1) : settings.sideset_count;
+    // settings.sideset_count = settings.sideset_opt ? (settings.sideset_count - 1) : settings.sideset_count; TODO: Might be wrong
     u16 delay_bit_count = 5 - settings.sideset_count - (settings.sideset_opt ? 1 : 0);
     // extract the delay filed
     regs.delay = delay_side_set_field & ((1 << delay_bit_count) - 1);
 
     // --- Do side set (s3.5.1: Sideset take place before the instrucion) --- 
     PioStateMachine::doSideSet(delay_side_set_field);
-    
+
     // --- Dispatch the instruction handler --- 
     switch (opcode)
     {

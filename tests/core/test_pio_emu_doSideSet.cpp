@@ -37,7 +37,7 @@ protected:
     }
 
     // Helper to check if all 'pins' in 'array' have the value of expected
-    void checkPins(const std::array<int8_t, 32>& array, const std::vector<int>& pins, int8_t expected)
+    inline void checkPins(const std::array<int8_t, 32>& array, const std::vector<int>& pins, int8_t expected)
     {
         for (int pin : pins)
         {
@@ -47,11 +47,11 @@ protected:
     }
 
     // Helper to check if pins *NOT* in 'pins' have expected values
-    void checkPinsNotIn(const std::array<int8_t, 32>& array, const std::vector<int>& pins, int8_t expected)
+    inline void checkPinsNotIn(const std::array<int8_t, 32>& array, const std::vector<int>& pins, int8_t expected)
     {
         for (int i = 0; i < 32; i++)
         {
-            if (std::find(pins.begin(), pins.end(), i) == pins.end())
+            if (std::find(pins.begin(), pins.end(), i) == pins.end())  // not found
             {
                 INFO("Checking pin ", i, " expected value: ", expected, " actual: ", array[i]);
                 CHECK(array[i] == expected);
@@ -59,7 +59,7 @@ protected:
         }
     }
 
-    uint32_t constructNop(uint32_t delay_cnt, uint32_t delay_val, uint32_t side_cnt, uint32_t side_val, bool side_is_opt)
+    uint32_t constructNop(uint32_t delay_cnt, uint32_t delay_val, uint32_t side_cnt, uint32_t side_val, bool side_is_opt, bool side_en=true)
     {
         // nop: mov Y Y
         // bit:12~8 delay/side-set
@@ -69,8 +69,8 @@ protected:
         uint16_t delay_part = delay_val & ((1 << delay_cnt) - 1);
         uint16_t side_part = side_val & ((1 << side_cnt) - 1);
         uint16_t delay_ss_field = delay_part | side_part << delay_cnt;
-        if (side_is_opt)
-            delay_ss_field |= 1 << 5;
+        if (side_is_opt && side_en)
+            delay_ss_field |= 1 << 4; // set the MSB 
         return (0b101 << 13) | (delay_ss_field << 8) | (0b010 << 5) | (0b00 << 3) | 0b010;
     }
 };
@@ -146,7 +146,6 @@ TEST_CASE_FIXTURE(PioSideSetFixture, "PioStateMachine::doSideSet tests")
             0b0,
             pio.settings.sideset_opt
         );
-        INFO(pio.instructionMemory[0]);
         pio.tick();
         pio.tick(); // there's one delay
         CHECK(pio.regs.pc == 1);
@@ -156,18 +155,17 @@ TEST_CASE_FIXTURE(PioSideSetFixture, "PioStateMachine::doSideSet tests")
         // side-set bits 0b10001
         pio.instructionMemory[1] = constructNop(
             pio.settings.sideset_opt ? (5 - pio.settings.sideset_count - 1) : (5 - pio.settings.sideset_count),
-            1,
+            0,
             pio.settings.sideset_count,
             0b1,
             pio.settings.sideset_opt
         );
-        INFO(pio.instructionMemory[1]);
         pio.tick();
 
         CHECK(pio.gpio.sideset_data[5] == 1);
         checkPinsNotIn(pio.gpio.sideset_data, { 5 }, -1); // pins other than 5 should not be
     }
-#if 0
+
 
     SUBCASE("Side-set count = 3, no enable bit")
     {
@@ -178,16 +176,47 @@ TEST_CASE_FIXTURE(PioSideSetFixture, "PioStateMachine::doSideSet tests")
         pio.settings.sideset_base = 10; // Starts at pin 10
         pio.settings.sideset_to_pindirs = false;
 
-        // sideset 0b00100
-        pio.doSideSet(0b00100);
+        // sideset 0b001'00
+        pio.regs.pc = 0;
+        pio.instructionMemory[0] = constructNop(
+            pio.settings.sideset_opt ? (5 - pio.settings.sideset_count - 1) : (5 - pio.settings.sideset_count),
+            0,
+            pio.settings.sideset_count,
+            0b001, // base should set
+            pio.settings.sideset_opt
+        );
+        pio.tick();
 
         // pins should set
-        checkPins(pio.gpio.sideset_data, { 12 }, 1);
-        checkPins(pio.gpio.sideset_data, { 10, 11 }, 0);
+        checkPins(pio.gpio.sideset_data, { 10 }, 1);
+        checkPins(pio.gpio.sideset_data, { 12, 11 }, 0);
 
         // others should not be modified
         checkPinsNotIn(pio.gpio.sideset_data, { 10, 11, 12 }, -1);
+
+        // sideset 0b110'00 
+        resetGpioArrays(-1);
+        pio.instructionMemory[1] = constructNop(
+            pio.settings.sideset_opt ? (5 - pio.settings.sideset_count - 1) : (5 - pio.settings.sideset_count),
+            0,
+            pio.settings.sideset_count,
+            0b110, // base+2 and base+1 should set
+            pio.settings.sideset_opt
+        );
+        pio.tick();
+
+        // pins should set
+        checkPins(pio.gpio.sideset_data, { 11, 12 }, 1);
+        checkPins(pio.gpio.raw_data, { 11, 12 }, 1);  // aslo check if it's applied to the raw data
+        checkPins(pio.gpio.sideset_data, { 10 }, 0);
+        checkPins(pio.gpio.raw_data, { 10 }, 0);
+
+        // others should not be modified
+        checkPinsNotIn(pio.gpio.sideset_data, { 10, 11, 12 }, -1);
+        checkPinsNotIn(pio.gpio.raw_data, { 10, 11, 12 }, 0 );  // initial value of raw_data is 0
+        checkPinsNotIn(pio.gpio.sideset_pindirs, { }, -1);
     }
+
 
     SUBCASE("Side-set count = 5 , no enable bit")
     {
@@ -198,8 +227,17 @@ TEST_CASE_FIXTURE(PioSideSetFixture, "PioStateMachine::doSideSet tests")
         pio.settings.sideset_base = 2; // Starts at pin 2
         pio.settings.sideset_to_pindirs = false;
 
-        // 0b10101 pins 2, 3, 4, 5, 6
-        pio.doSideSet(0b10100);
+        // 0b10100 pins 6' 5 4' 3 2
+        // sideset 0b10100
+        pio.regs.pc = 0;
+        pio.instructionMemory[0] = constructNop(
+            pio.settings.sideset_opt ? (5 - pio.settings.sideset_count - 1) : (5 - pio.settings.sideset_count),
+            0,
+            pio.settings.sideset_count,
+            0b10100, // base should set
+            pio.settings.sideset_opt
+        );
+        pio.tick();
 
         // pins 4, 6 should set
         checkPins(pio.gpio.sideset_data, { 4, 6 }, 1);
@@ -208,20 +246,31 @@ TEST_CASE_FIXTURE(PioSideSetFixture, "PioStateMachine::doSideSet tests")
         checkPinsNotIn(pio.gpio.sideset_data, { 2, 3, 4, 5, 6 }, -1);
     }
 
+
     SUBCASE("Side-set with enable bit (enabled)")
     {
         resetGpioArrays(-1);
 
-        pio.settings.sideset_count = 3; // 2 data + 1 enable bit
+        // 2 data + 1 enable bit
+        pio.settings.sideset_count = 2; 
         pio.settings.sideset_opt = true;  // enable sideset optional
         pio.settings.sideset_base = 8; // Starts at pin 8
         pio.settings.sideset_to_pindirs = false;
 
-        pio.doSideSet(0b10001); // 0b10001 -> enable=1, data=01 TODO: Check opt bit encoding
+        // 0b1'01'00 -> enable=1, data=01 for pin 9 8
+        pio.regs.pc = 0;
+        pio.instructionMemory[0] = pio.instructionMemory[0] = constructNop(
+            pio.settings.sideset_opt ? (5 - pio.settings.sideset_count - 1) : (5 - pio.settings.sideset_count),
+            0,
+            pio.settings.sideset_count,
+            3, 
+            pio.settings.sideset_opt
+        );
+        pio.tick();
 
         // Pins 8, 9 should be modded
         checkPins(pio.gpio.sideset_data, { 8 }, 1);
-        checkPins(pio.gpio.sideset_data, { 9 }, 0);
+        checkPins(pio.gpio.sideset_data, { 9 }, 1);
 
         checkPinsNotIn(pio.gpio.sideset_data, { 8, 9 }, -1);
     }
@@ -230,16 +279,27 @@ TEST_CASE_FIXTURE(PioSideSetFixture, "PioStateMachine::doSideSet tests")
     {
         resetGpioArrays(-1);
 
-        pio.settings.sideset_count = 3; // 2 data + 1 enable
+        pio.settings.sideset_count = 2; 
         pio.settings.sideset_opt = true;  // enable
         pio.settings.sideset_base = 8; // pin 8
         pio.settings.sideset_to_pindirs = false;
 
-        pio.doSideSet(0x03); // 0b00011 → enable=0, data=11
+        // 0b0'11'00 → enable=0, data=11
+        pio.regs.pc = 0;
+        pio.instructionMemory[0] = pio.instructionMemory[0] = constructNop(
+            pio.settings.sideset_opt ? (5 - pio.settings.sideset_count - 1) : (5 - pio.settings.sideset_count),
+            0,
+            pio.settings.sideset_count,
+            3,
+            pio.settings.sideset_opt,
+            false  // Side-set not enabled
+        );
+        pio.tick();
 
         // No pins should be modded
         checkPinsNotIn(pio.gpio.sideset_data, {}, -1);
     }
+
 
     SUBCASE("Side-set to pin directions")
     {
@@ -251,7 +311,16 @@ TEST_CASE_FIXTURE(PioSideSetFixture, "PioStateMachine::doSideSet tests")
         pio.settings.sideset_base = 12; // Starts at pin 12
         pio.settings.sideset_to_pindirs = true; // pindir
 
-        pio.doSideSet(0b00010);
+        //pio.doSideSet(0b10'000);
+        pio.regs.pc = 0;
+        pio.instructionMemory[0] = pio.instructionMemory[0] = constructNop(
+            pio.settings.sideset_opt ? (5 - pio.settings.sideset_count - 1) : (5 - pio.settings.sideset_count),
+            0,
+            pio.settings.sideset_count,
+            2,
+            pio.settings.sideset_opt
+        );
+        pio.tick();
 
         // This should not modify sideset_data
         checkPinsNotIn(pio.gpio.sideset_data, {}, -1);
@@ -261,26 +330,6 @@ TEST_CASE_FIXTURE(PioSideSetFixture, "PioStateMachine::doSideSet tests")
         checkPins(pio.gpio.pindirs, { 13 }, 1);
     }
 
-    SUBCASE("Side-set ignores bits beyond count")
-    {
-        resetGpioArrays(-1);
-
-        // Configure SM with 2-bit side-set
-        pio.settings.sideset_count = 2;
-        pio.settings.sideset_opt = false;
-        pio.settings.sideset_base = 20; // Starts at pin 20
-        pio.settings.sideset_to_pindirs = false;
-
-        // Call doSideSet with value that has extra bits set beyond count
-        pio.doSideSet(0x1F); // 0b11111, but we only care about the lowest 2 bits (0b11)
-
-        // Only pins 20 and 21 should be affected, both set to 1
-        checkPins(pio.gpio.sideset_data, { 20, 21 }, 1);
-
-        // Other pins should remain untouched
-        checkPinsNotIn(pio.gpio.sideset_data, { 20, 21 }, -1);
-    }
-
     SUBCASE("Side-set at end of pin range wraps correctly")
     {
         resetGpioArrays(-1);
@@ -288,11 +337,20 @@ TEST_CASE_FIXTURE(PioSideSetFixture, "PioStateMachine::doSideSet tests")
         // Configure SM with 3-bit side-set at near the end of pin range
         pio.settings.sideset_count = 3;
         pio.settings.sideset_opt = false;
-        pio.settings.sideset_base = 30; // Starts at pin 30
+        pio.settings.sideset_base = 30; 
         pio.settings.sideset_to_pindirs = false;
 
         // Call doSideSet with value 0b111 (7 in decimal)
-        pio.doSideSet(0x07);
+        //pio.doSideSet(0b111'00); // Starts at pin 30, should set 0 31 30
+        pio.regs.pc = 0;
+        pio.instructionMemory[0] = pio.instructionMemory[0] = constructNop(
+            pio.settings.sideset_opt ? (5 - pio.settings.sideset_count - 1) : (5 - pio.settings.sideset_count),
+            0,
+            pio.settings.sideset_count,
+            0b111, // Starts at pin 30, should set 0 31 30
+            pio.settings.sideset_opt
+        );
+        pio.tick();
 
         // Pins 30, 31 and 0 should be affected (wrapping from 31 to 0)
         checkPins(pio.gpio.sideset_data, { 30, 31, 0 }, 1);
@@ -312,7 +370,7 @@ TEST_CASE_FIXTURE(PioSideSetFixture, "PioStateMachine::doSideSet tests")
         pio.settings.sideset_to_pindirs = false;
 
         // Set up conflicting values
-        pio.doSideSet(0x03); // Set pins 5 and 6 to 1 via side-set
+        pio.doSideSet(0b11'000); // Set pins 5 and 6 to 1 via side-set
 
         // Set up conflicting OUT values
         setPins(pio.gpio.out_data, { 5, 6 }, 0);
@@ -331,5 +389,4 @@ TEST_CASE_FIXTURE(PioSideSetFixture, "PioStateMachine::doSideSet tests")
         checkPins(pio.gpio.raw_data, { 5 }, 0);
         checkPins(pio.gpio.raw_data, { 6 }, 1);
     }
-#endif
 }

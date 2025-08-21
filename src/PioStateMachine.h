@@ -37,7 +37,7 @@ public:
     // Configuration settings
     struct Settings
     {
-        int  sideset_count = 0;
+        int  sideset_count = 0;  // bit count without opt bit
         bool sideset_opt = false;
         bool sideset_to_pindirs = false; 
         int  sideset_base = -1;
