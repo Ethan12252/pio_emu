@@ -1,6 +1,7 @@
 #include "PioStateMachine.h"
 
 using u16 = uint16_t;
+using u32 = uint32_t;
 
 void PioStateMachine::push_to_rx_fifo()
 {
@@ -428,10 +429,10 @@ void PioStateMachine::executeIn()
     if (bitCount == 0)
         bitCount = 32; // 32 is encoded as 0b00000
 
-    u16 mask = (1 << bitCount) - 1;
+    u32 mask = (1 << bitCount) - 1;
     if (bitCount == 32)
         mask = 0xff'ff'ff'ff;
-    u16 data = 0;
+    u32 data = 0;
 
     switch (source)
     {
@@ -518,7 +519,7 @@ void PioStateMachine::executeOut()
     u16 bitCount = currentInstruction & 0b1'1111; // bit 4:0
     if (bitCount == 0) // 32 is encoded as 0b000
         bitCount = 32;
-    u16 osrOriginal = regs.osr; // For EXEC
+    u32 osrOriginal = regs.osr; // For EXEC
 
     // (s3.4.5.2):autopull
     if (settings.autopull_enable)
@@ -535,14 +536,14 @@ void PioStateMachine::executeOut()
             skip_increase_pc = true;
             delay_delay = true;
             pull_is_stalling = true;
-            LOG_WARNING("'pull' is stalling in OUT");
+            LOG_WARNING("pull operation is stalling in OUT instruction");
             return;
         }
     }
 
     // Get data out of osr
-    u16 data = 0;
-    u16 mask = (1 << bitCount) - 1;
+    u32 data = 0;
+    u32 mask = (1 << bitCount) - 1;
     if (bitCount == 32) // mask calc when bitcount=32 will fail(overflow)
         mask = 0xff'ff'ff'ff;
     if (settings.out_shift_right)
@@ -718,7 +719,7 @@ void PioStateMachine::executeMov()
     u16 source = currentInstruction & 0b111; // bits 2:0
 
     // data to be moved
-    u16 data = 0;
+    u32 data = 0;
 
     // --- Source Handling ---
     switch (source)
@@ -774,7 +775,7 @@ void PioStateMachine::executeMov()
         break;
     case 0b10: // bit-reverse
     {
-        u16 old_data = data;
+        u32 old_data = data;
         data = 0;
         for (int i = 0; i < 32; i++) // function checked
         {

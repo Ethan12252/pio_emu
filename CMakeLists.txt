@@ -35,6 +35,7 @@ set(PIO_TESTS
         set
         irq
         out
+        out_tick
         in
         gpioset
         doSideSet
