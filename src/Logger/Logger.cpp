@@ -98,13 +98,6 @@ void Logger::log(LogLevel level, const std::string& message, int lineNumber, con
     }
 }
 
-// Helper macros for logging
-#define LOG_DEBUG(logger, msg)   logger.debug(msg, __LINE__, __FILE__)
-#define LOG_INFO(logger, msg)    logger.info(msg, __LINE__, __FILE__)
-#define LOG_WARNING(logger, msg) logger.warning(msg, __LINE__, __FILE__)
-#define LOG_ERROR(logger, msg)   logger.error(msg, __LINE__, __FILE__)
-#define LOG_FATAL(logger, msg)   logger.fatal(msg, __LINE__, __FILE__)
-
 // Update helper methods to accept line/file
 void Logger::debug(const std::string& message, int lineNumber, const char* fileName)
 {
