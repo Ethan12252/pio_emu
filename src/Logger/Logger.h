@@ -37,7 +37,7 @@ private:
     std::ofstream logFile_;
 };
 
-inline Logger logger;
+static inline Logger logger;
 
 // Macros for logging
 #define LOG_DEBUG(message) logger.debug(message, __LINE__, __FILE__)

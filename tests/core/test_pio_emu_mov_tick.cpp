@@ -1,255 +1,350 @@
-#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
+﻿#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <doctest/doctest.h>
+#include <algorithm>
 #include "../../src/PioStateMachine.h"
 
-// Helper for standard MOV encoding
-uint16_t buildMovInstruction(uint8_t dest, uint8_t op, uint8_t src, uint8_t delay = 0)
+enum class MovDestination : uint8_t {
+    PINS = 0b000,  
+    X = 0b001,     
+    Y = 0b010,     
+    // 0b011 is Reserved
+    EXEC = 0b100,  
+    PC = 0b101,    
+    ISR = 0b110,   
+    OSR = 0b111    
+};
+
+enum class MovSource : uint8_t {
+    PINS = 0b000,    
+    X = 0b001,       
+    Y = 0b010,       
+    NULL_ = 0b011,   
+    // 0b100 is Reserved
+    STATUS = 0b101,  
+    ISR = 0b110,     
+    OSR = 0b111      
+};
+
+enum class MovOperation : uint8_t {
+    NONE = 0b00,
+    INVERT = 0b01,
+    BIT_REVERSE = 0b10,
+    // 0b11 is Reserved
+};
+
+// Helper for MOV encoding
+uint16_t buildMovInstruction(MovDestination dest, MovOperation op, MovSource src, uint8_t delay = 0)
 {
     // MOV: 0b101 (bits 15-13), delay (bits 12-8), dest (bits 7-5), op (bits 4-3), src (bits 2-0)
-    return (0b101 << 13) | (delay << 8) | (dest << 5) | (op << 3) | src;
+    return (0b101 << 13) | (delay << 8) | (static_cast<uint8_t>(dest) << 5) |
+        (static_cast<uint8_t>(op) << 3) | static_cast<uint8_t>(src);
 }
 
-// Helper for MOV to RX FIFO (PUT)
-uint16_t buildMovRxPutInstruction(bool idxi, uint8_t index, uint8_t delay = 0)
-{
-    // MOV RX PUT: 0b100 (bits 15-13), delay (bits 12-8), 0b0001 (bits 7-4), idxi (bit 3), index (bits 2-0)
-    return (0b100 << 13) | (delay << 8) | (0b0001 << 4) | (idxi << 3) | (index & 0x7);
-}
-
-// Helper for MOV from RX FIFO (GET)
-uint16_t buildMovRxGetInstruction(bool idxi, uint8_t index, uint8_t delay = 0)
-{
-    // MOV RX GET: 0b100 (bits 15-13), delay (bits 12-8), 0b1001 (bits 7-4), idxi (bit 3), index (bits 2-0)
-    return (0b100 << 13) | (delay << 8) | (0b1001 << 4) | (idxi << 3) | (index & 0x7);
-}
-
-/*
-TODO:
-covered:
-    ?All standard MOV destination/source/operation combinations.
-    ?Special behaviors (PC, EXEC, ISR/OSR reset, STATUS, PINS).
-    ?Delay cycles.
-    ?MOV to RX FIFO (by Y and by index, with/without config bit).
-    ?MOV from RX FIFO (by Y and by index, with/without config bit).
-    ?Reserved encoding edge cases.
-need to adjust:
-    ?The field names and RX FIFO array in PioStateMachine.
-    ?The config bits (settings.fjoin_rx_put, settings.fjoin_rx_get).
-    ?The bit-reverse implementation for full coverage.
-*/
+//// Keep the old function for backward compatibility if needed
+//uint16_t buildMovInstruction(uint8_t dest, uint8_t op, uint8_t src, uint8_t delay = 0)
+//{
+//    return (0b101 << 13) | (delay << 8) | (dest << 5) | (op << 3) | src;
+//}
 
 TEST_CASE("Standard MOV: X <- Y, None")
 {
     PioStateMachine pio;
     pio.regs.y = 0x12345678;
     pio.regs.x = 0;
-    pio.instructionMemory[0] = buildMovInstruction(0b001, 0b00, 0b010); // MOV X, Y
+    pio.instructionMemory[0] = buildMovInstruction(MovDestination::X, MovOperation::NONE, MovSource::Y);
     pio.tick();
+    CHECK(pio.regs.y == 0x12345678);
     CHECK(pio.regs.x == 0x12345678);
 }
 
-TEST_CASE("Standard MOV: Y <- X, Invert")
+TEST_CASE("MOV: Y <- X, Invert")
 {
     PioStateMachine pio;
     pio.regs.x = 0x0F0F0F0F;
     pio.regs.y = 0;
-    pio.instructionMemory[0] = buildMovInstruction(0b010, 0b01, 0b001); // MOV Y, ~X
+    pio.instructionMemory[0] = buildMovInstruction(MovDestination::Y, MovOperation::INVERT, MovSource::X);
     pio.tick();
     CHECK(pio.regs.y == ~0x0F0F0F0F);
 }
 
-TEST_CASE("Standard MOV: X <- Y, Bit-reverse")
-{
+TEST_CASE("MOV: X <- Y, Bit-reverse") {
     PioStateMachine pio;
-    pio.regs.y = 0x80000001;
+    pio.regs.y = 0x80000001; // MSB and LSB set
     pio.regs.x = 0;
-    pio.instructionMemory[0] = buildMovInstruction(0b001, 0b10, 0b010); // MOV X, ::Y
+    pio.instructionMemory[0] = buildMovInstruction(MovDestination::X, MovOperation::BIT_REVERSE, MovSource::Y);
     pio.tick();
-    // Bit-reverse of 0x80000001 is 0x80000001 for 32-bit, but you may want to implement a bit-reverse helper for full coverage
-    CHECK(pio.regs.x == 0x80000001);
+    CHECK(pio.regs.x == 0x80000001); // Should be bit-reversed
 }
 
-TEST_CASE("Standard MOV: PC <- X (Unconditional jump)")
+TEST_CASE("MOV: X <- NULL") {
+    PioStateMachine pio;
+    pio.regs.x = 0xFFFFFFFF;
+    pio.instructionMemory[0] = buildMovInstruction(MovDestination::X, MovOperation::NONE, MovSource::NULL_);
+    pio.tick();
+    CHECK(pio.regs.x == 0); // NULL should provide zero
+}
+
+TEST_CASE("MOV: PINS <- X") {
+    PioStateMachine pio;
+    pio.regs.x = 0b100;
+    pio.settings.out_base = 0;
+    pio.settings.out_count = 3;
+    std::fill(pio.gpio.out_pindirs.begin(), pio.gpio.out_pindirs.begin() + 3, 0); // set to output
+    pio.instructionMemory[0] = buildMovInstruction(MovDestination::PINS, MovOperation::NONE, MovSource::X);
+    pio.tick();
+    // Check that pins were set according to OUT pin mapping
+    CHECK(pio.gpio.raw_data[0] == 0);
+    CHECK(pio.gpio.raw_data[1] == 0);
+    CHECK(pio.gpio.raw_data[2] == 1);
+}
+
+TEST_CASE("MOV: PC <- X (Unconditional jump)")
 {
     PioStateMachine pio;
-    pio.regs.x = 7;
+    pio.regs.x  = 7;
     pio.regs.pc = 0;
-    pio.instructionMemory[0] = buildMovInstruction(0b101, 0b00, 0b001); // MOV PC, X
+    pio.instructionMemory[0] = buildMovInstruction(MovDestination::PC, MovOperation::NONE, MovSource::X);
     pio.tick();
     CHECK(pio.regs.pc == 7);
 }
 
-TEST_CASE("Standard MOV: EXEC <- X (Execute register as instruction)")
+TEST_CASE("MOV: EXEC <- X (Execute register as instruction)")
 {
     PioStateMachine pio;
     // Place a JMP Always to 5 in X
-    pio.regs.x = (0b000 << 13) | (0 << 8) | (0b000 << 5) | 5;
+    pio.regs.x  = 0x0004;  // jmp 4
     pio.regs.pc = 0;
-    pio.instructionMemory[0] = buildMovInstruction(0b100, 0b00, 0b001); // MOV EXEC, X
+    pio.instructionMemory[0] = buildMovInstruction(MovDestination::EXEC, MovOperation::NONE, MovSource::X);
     pio.tick();
-    CHECK(pio.regs.pc == 5); // Should jump to 5 after executing X as instruction
+    pio.tick();
+    CHECK(pio.regs.pc == 4); // Should jump to 4 after executing X as instruction
 }
 
-TEST_CASE("Standard MOV: ISR <- OSR, ISR reset")
+// TODO: Need check
+TEST_CASE("MOV: ISR <- OSR, ISR reset")
 {
     PioStateMachine pio;
     pio.regs.osr = 0xDEADBEEF;
-    pio.regs.isr = 0;
-    pio.instructionMemory[0] = buildMovInstruction(0b110, 0b00, 0b111); // MOV ISR, OSR
+    pio.regs.isr = 0x69;
+    pio.regs.isr_shift_count = 8;
+    pio.instructionMemory[0] = buildMovInstruction(MovDestination::ISR, MovOperation::NONE, MovSource::OSR);
     pio.tick();
-    CHECK(pio.regs.isr == 0); // Should be reset to 0 after operation
+    CHECK(pio.regs.isr == 0xDEADBEEF); 
+    CHECK(pio.regs.isr_shift_count == 0); // s3.4.8.2 Input shift counter is reset to 0 by this op (i.e. empty)
+    //CHECK(pio.regs.osr == 0); TODO: Should source also cleared? Current code does not
 }
 
-TEST_CASE("Standard MOV: OSR <- ISR, OSR reset")
+// TODO: Need check
+TEST_CASE("MOV: OSR <- ISR, OSR reset")
 {
     PioStateMachine pio;
     pio.regs.isr = 0xCAFEBABE;
     pio.regs.osr = 0;
-    pio.instructionMemory[0] = buildMovInstruction(0b111, 0b00, 0b110); // MOV OSR, ISR
+    pio.instructionMemory[0] = buildMovInstruction(MovDestination::OSR, MovOperation::NONE, MovSource::ISR);
     pio.tick();
-    CHECK(pio.regs.osr == 0xFFFFFFFF); // Should be reset to full after operation
+    CHECK(pio.regs.osr == 0xCAFEBABE); 
+    CHECK(pio.regs.osr_shift_count == 0); // s3.4.8.2 Input shift counter is reset to 0 by this op (i.e. empty)
+    //CHECK(pio.regs.isr == 0); TODO: Should source also cleared? Current code does not
 }
 
-TEST_CASE("Standard MOV: X <- PINS (Read pins)")
+TEST_CASE("MOV: X <- PINS (Read pins)")
 {
     PioStateMachine pio;
-    pio.gpio.raw_data[0] = 1;
-    pio.gpio.raw_data[1] = 0;
+    // uses 'in' command's pin configuration
+    pio.settings.in_base = 0;
+    pio.gpio.raw_data[0] = 0;
+    pio.gpio.raw_data[1] = 1;
     pio.gpio.raw_data[2] = 1;
     pio.regs.x = 0;
-    pio.instructionMemory[0] = buildMovInstruction(0b001, 0b00, 0b000); // MOV X, PINS
+    pio.instructionMemory[0] = buildMovInstruction(MovDestination::X, MovOperation::NONE, MovSource::PINS);
     pio.tick();
-    CHECK((pio.regs.x & 0x7) == 0b101);
+    CHECK((pio.regs.x & 0x7) == 0b110);
 }
 
-TEST_CASE("Standard MOV: X <- STATUS (all-ones)")
+TEST_CASE("MOV: X <- STATUS (all-ones)")
 {
     PioStateMachine pio;
     pio.regs.x = 0;
-    pio.settings.status_sel = 1; // Simulate STATUS source as all-ones
-    pio.instructionMemory[0] = buildMovInstruction(0b001, 0b00, 0b101); // MOV X, STATUS
+    pio.settings.status_sel = 1; // STATUS source txfifo
+    pio.settings.fifo_level_N = 4;
+    pio.tx_fifo_count = 4; // full
+    pio.instructionMemory[0] = 0xa042; // nop 
+    pio.instructionMemory[1] = buildMovInstruction(MovDestination::X, MovOperation::NONE, MovSource::STATUS);
+    pio.tick();
     pio.tick();
     CHECK(pio.regs.x == 0xFFFFFFFF);
 }
 
-TEST_CASE("Standard MOV: X <- STATUS (all-zeroes)")
+TEST_CASE("MOV: X <- STATUS (all-zeroes)")
 {
     PioStateMachine pio;
     pio.regs.x = 0;
     pio.settings.status_sel = 0; // Simulate STATUS source as all-zeroes
-    pio.instructionMemory[0] = buildMovInstruction(0b001, 0b00, 0b101); // MOV X, STATUS
+    pio.instructionMemory[0] = buildMovInstruction(MovDestination::X, MovOperation::NONE, MovSource::STATUS);
     pio.tick();
     CHECK(pio.regs.x == 0x0);
 }
 
-TEST_CASE("Standard MOV: with delay")
+TEST_CASE("MOV: with delay")
 {
     PioStateMachine pio;
     pio.regs.y = 0xA5A5A5A5;
     pio.regs.x = 0;
-    pio.instructionMemory[0] = buildMovInstruction(0b001, 0b00, 0b010, 2); // MOV X, Y, delay 2
-    pio.tick();
+    pio.instructionMemory[0] = buildMovInstruction(MovDestination::X, MovOperation::NONE, MovSource::Y, 2);
+    pio.instructionMemory[1] = 0xa042;  // nop
+    
+    pio.tick();  // Instruction it self
     CHECK(pio.regs.x == 0xA5A5A5A5);
-    pio.tick();
-    CHECK(pio.regs.pc == 0);
-    pio.tick();
-    CHECK(pio.regs.pc == 0);
-    pio.tick();
     CHECK(pio.regs.pc == 1);
+
+    pio.tick();  // First delay
+    CHECK(pio.regs.pc == 1);
+
+    pio.tick();  // Second delay
+    CHECK(pio.regs.pc == 1);
+
+    pio.tick();
+    CHECK(pio.regs.pc == 2);
 }
 
-// --- RX FIFO MOV INSTRUCTIONS ---
+#if 1
 
-TEST_CASE("MOV to RX FIFO: rxfifo[y] <- isr (FJOIN_RX_PUT set)")
+// Tests for PINS to ISR/OSR
+TEST_CASE("MOV: ISR <- PINS")
 {
     PioStateMachine pio;
-    pio.settings.fjoin_rx_put = true;
+    // Set up pin configuration for IN instruction (MOV PINS uses same config)
+    pio.settings.in_base = 0;
+    pio.gpio.raw_data[0] = 0;
+    pio.gpio.raw_data[1] = 1;
+    pio.gpio.raw_data[2] = 1;
+    pio.regs.isr = 0x69;
+    pio.regs.isr_shift_count = 8; // Some existing data
+
+    pio.instructionMemory[0] = buildMovInstruction(MovDestination::ISR, MovOperation::NONE, MovSource::PINS);
+    pio.tick();
+
+    CHECK((pio.regs.isr & 0x7) == 0b110); // Should read pins 0-2: 101
+    CHECK(pio.regs.isr_shift_count == 0); // ISR shift counter reset to 0 by MOV
+}
+
+TEST_CASE("MOV: OSR <- PINS")
+{
+    PioStateMachine pio;
+    // Set up pin configuration 
+    pio.settings.in_base = 2;
+    pio.gpio.raw_data[0] = 1;
+    pio.gpio.raw_data[1] = 0;
+    pio.gpio.raw_data[2] = 1;
+    pio.gpio.raw_data[3] = 1;
+    pio.regs.osr = 0xFFFFFFFF;
+    pio.regs.osr_shift_count = 16; // Some existing shift count
+
+    pio.instructionMemory[0] = buildMovInstruction(MovDestination::OSR, MovOperation::NONE, MovSource::PINS);
+    pio.tick();
+
+    CHECK((pio.regs.osr & 0x7) == 0b011); // Should read pins 2-4: 011 (pins 2=1, 3=1, 4=0 from raw_data[2,3] assuming pin4 default 0)
+    CHECK(pio.regs.osr_shift_count == 0); // OSR shift counter reset to 0 by MOV
+}
+
+// Tests for NULL to PC/ISR/OSR/PINS
+TEST_CASE("MOV: PC <- NULL")
+{
+    PioStateMachine pio;
+    pio.regs.pc = 5;
+    pio.instructionMemory[5] = buildMovInstruction(MovDestination::PC, MovOperation::NONE, MovSource::NULL_);
+    pio.tick();
+    CHECK(pio.regs.pc == 0); // NULL provides 0, so PC should be 0
+}
+
+TEST_CASE("MOV: ISR <- NULL")
+{
+    PioStateMachine pio;
     pio.regs.isr = 0xDEADBEEF;
-    pio.regs.y = 2;
-    pio.rx_fifo[2] = 0;
-    pio.instructionMemory[0] = buildMovRxPutInstruction(false, 0); // IdxI=0, index=0 (use Y)
+    pio.regs.isr_shift_count = 16;
+    pio.instructionMemory[0] = buildMovInstruction(MovDestination::ISR, MovOperation::NONE, MovSource::NULL_);
     pio.tick();
-    CHECK(pio.rx_fifo[2] == 0xDEADBEEF);
+    CHECK(pio.regs.isr == 0); // NULL provides 0
+    CHECK(pio.regs.isr_shift_count == 0); // ISR shift counter reset by MOV
 }
 
-TEST_CASE("MOV to RX FIFO: rxfifo[<index>] <- isr (FJOIN_RX_PUT set)")
+TEST_CASE("MOV: OSR <- NULL")
 {
     PioStateMachine pio;
-    pio.settings.fjoin_rx_put = true;
-    pio.regs.isr = 0xCAFEBABE;
-    pio.rx_fifo[3] = 0;
-    pio.instructionMemory[0] = buildMovRxPutInstruction(true, 3); // IdxI=1, index=3
+    pio.regs.osr = 0xCAFEBABE;
+    pio.regs.osr_shift_count = 8;
+    pio.instructionMemory[0] = buildMovInstruction(MovDestination::OSR, MovOperation::NONE, MovSource::NULL_);
     pio.tick();
-    CHECK(pio.rx_fifo[3] == 0xCAFEBABE);
+    CHECK(pio.regs.osr == 0); // NULL provides 0
+    CHECK(pio.regs.osr_shift_count == 0); // OSR shift counter reset by MOV
 }
 
-TEST_CASE("MOV to RX FIFO: rxfifo[y] <- isr (FJOIN_RX_PUT not set, should not write)")
+TEST_CASE("MOV: PINS <- NULL")
 {
     PioStateMachine pio;
-    pio.settings.fjoin_rx_put = false;
-    pio.regs.isr = 0xDEADBEEF;
-    pio.regs.y = 1;
-    pio.rx_fifo[1] = 0;
-    pio.instructionMemory[0] = buildMovRxPutInstruction(false, 0); // IdxI=0, index=0 (use Y)
+    // Set up output pins
+    pio.settings.out_base = 0;
+    pio.settings.out_count = 3;
+    std::fill(pio.gpio.out_pindirs.begin(), pio.gpio.out_pindirs.begin() + 3, 0); // set to output
+    // Set pins to some initial values
+    pio.gpio.raw_data[0] = 1;
+    pio.gpio.raw_data[1] = 1;
+    pio.gpio.raw_data[2] = 1;
+
+    pio.instructionMemory[0] = buildMovInstruction(MovDestination::PINS, MovOperation::NONE, MovSource::NULL_);
     pio.tick();
-    CHECK(pio.rx_fifo[1] == 0); // Should not write
+
+    // NULL should output 0 to all pins
+    CHECK(pio.gpio.raw_data[0] == 0);
+    CHECK(pio.gpio.raw_data[1] == 0);
+    CHECK(pio.gpio.raw_data[2] == 0);
 }
 
-TEST_CASE("MOV from RX FIFO: osr <- rxfifo[y] (FJOIN_RX_GET set)")
+// Tests with operations applied
+TEST_CASE("MOV: ISR <- PINS, Invert")
 {
     PioStateMachine pio;
-    pio.settings.fjoin_rx_get = true;
-    pio.regs.y = 2;
-    pio.rx_fifo[2] = 0xAABBCCDD;
-    pio.regs.osr = 0;
-    pio.instructionMemory[0] = buildMovRxGetInstruction(false, 0); // IdxI=0, index=0 (use Y)
+    pio.settings.in_base = 0;
+    pio.gpio.raw_data[0] = 1;
+    pio.gpio.raw_data[1] = 0;
+    pio.gpio.raw_data[2] = 1;
+    pio.regs.isr = 0;
+
+    pio.instructionMemory[0] = buildMovInstruction(MovDestination::ISR, MovOperation::INVERT, MovSource::PINS);
     pio.tick();
-    CHECK(pio.regs.osr == 0xAABBCCDD);
+
+    // Should read 0b101, then invert to get ~0b101 = 0xFFFFFFFA
+    CHECK(pio.regs.isr == ~0x5u); // ~(0b101)
+    CHECK(pio.regs.isr_shift_count == 0);
 }
 
-TEST_CASE("MOV from RX FIFO: osr <- rxfifo[<index>] (FJOIN_RX_GET set)")
+TEST_CASE("MOV: PC <- NULL, Bit-reverse")
 {
     PioStateMachine pio;
-    pio.settings.fjoin_rx_get = true;
-    pio.rx_fifo[1] = 0x11223344;
-    pio.regs.osr = 0;
-    pio.instructionMemory[0] = buildMovRxGetInstruction(true, 1); // IdxI=1, index=1
+    pio.regs.pc = 10;
+    pio.instructionMemory[10] = buildMovInstruction(MovDestination::PC, MovOperation::BIT_REVERSE, MovSource::NULL_);
     pio.tick();
-    CHECK(pio.regs.osr == 0x11223344);
+    // NULL is 0, bit-reverse of 0 is still 0
+    CHECK(pio.regs.pc == 0);
 }
 
-TEST_CASE("MOV from RX FIFO: osr <- rxfifo[y] (FJOIN_RX_GET not set, should not read)")
+TEST_CASE("MOV: PINS <- NULL, Invert")
 {
     PioStateMachine pio;
-    pio.settings.fjoin_rx_get = false;
-    pio.regs.y = 1;
-    pio.rx_fifo[1] = 0xAABBCCDD;
-    pio.regs.osr = 0;
-    pio.instructionMemory[0] = buildMovRxGetInstruction(false, 0); // IdxI=0, index=0 (use Y)
-    pio.tick();
-    CHECK(pio.regs.osr == 0); // Should not read
-}
+    pio.settings.out_base = 0;
+    pio.settings.out_count = 4;
+    std::fill(pio.gpio.out_pindirs.begin(), pio.gpio.out_pindirs.begin() + 4, 0); // set to output
+    // Set pins to initial values
+    std::fill(pio.gpio.raw_data.begin(), pio.gpio.raw_data.begin() + 4, 0);
 
-TEST_CASE("MOV to RX FIFO: reserved encoding (IdxI=0, index!=0)")
-{
-    PioStateMachine pio;
-    pio.settings.fjoin_rx_put = true;
-    pio.regs.isr = 0xDEADBEEF;
-    pio.rx_fifo[2] = 0;
-    pio.instructionMemory[0] = buildMovRxPutInstruction(false, 2); // IdxI=0, index=2 (reserved)
+    pio.instructionMemory[0] = buildMovInstruction(MovDestination::PINS, MovOperation::INVERT, MovSource::NULL_);
     pio.tick();
-    // Behavior is undefined, but should not write in a strict implementation
-    CHECK(pio.rx_fifo[2] == 0);
-}
 
-TEST_CASE("MOV from RX FIFO: reserved encoding (IdxI=0, index!=0)")
-{
-    PioStateMachine pio;
-    pio.settings.fjoin_rx_get = true;
-    pio.rx_fifo[3] = 0x11223344;
-    pio.regs.osr = 0;
-    pio.instructionMemory[0] = buildMovRxGetInstruction(false, 3); // IdxI=0, index=3 (reserved)
-    pio.tick();
-    // Behavior is undefined, but should not read in a strict implementation
-    CHECK(pio.regs.osr == 0);
+    // NULL=0, inverted = 0xFFFFFFFF, but only out_count bits are used
+    // Should set pins 0-3 to 1 (from the inverted NULL)
+    CHECK(pio.gpio.raw_data[0] == 1);
+    CHECK(pio.gpio.raw_data[1] == 1);
+    CHECK(pio.gpio.raw_data[2] == 1);
+    CHECK(pio.gpio.raw_data[3] == 1);
 }
+#endif 

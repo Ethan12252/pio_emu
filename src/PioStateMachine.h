@@ -58,7 +58,7 @@ public:
         bool out_shift_autopull = false;
         bool autopull_enable = false;
         bool autopush_enable = false;
-        bool status_sel = false;
+        bool status_sel = false;  // 0 for txfifo, 1 for rxfifo
     } settings;
 
     // GPIO regs (見s3.4.5)
@@ -81,9 +81,9 @@ public:
     // FIFOs
     void push_to_rx_fifo();
     void pull_from_tx_fifo();
-    std::array<uint32_t, 4> tx_fifo = { 0 };
+    std::array<uint32_t, 4> tx_fifo = { 0 }; // TODO: We didn't handle fifo joint
     std::array<uint32_t, 4> rx_fifo = { 0 };
-    int tx_fifo_count = 0;
+    int tx_fifo_count = 0;  // 0 is empty
     int rx_fifo_count = 0;
     bool push_is_stalling = false; // TODO: use of these variable need check
     bool pull_is_stalling = false;
@@ -111,5 +111,4 @@ public:
     void setAllGpio();
 
 private:
-    /*void tick_handle_delay();*/
 };

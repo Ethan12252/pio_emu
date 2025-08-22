@@ -39,11 +39,8 @@ void PioStateMachine::tick()
             goto update_and_exit;
         }
 
-        /* ----- Get new instruction and execute it ----- */
-        currentInstruction = instructionMemory[regs.pc];
-        executeInstruction();
-
-        /* ----- Update the 'status' depending on RxFIFO or TxFIFO count ----- */
+        // TODO: Check If we want to do this before, or after executeinst?
+        /* ----- Update the 'status' depending on RxFIFO or TxFIFO count ----- */ 
         if (settings.status_sel == 0)
         {
             // For Tx FIFO, All-ones if TX FIFO count < N, otherwise all-zeroes
@@ -58,6 +55,14 @@ void PioStateMachine::tick()
         {
             LOG_ERROR("Unknow status_sel");
         }
+
+        /* ----- Get new instruction and execute it ----- */
+        if (exec_command == false)
+            currentInstruction = instructionMemory[regs.pc];
+        else
+            exec_command = false;
+
+        executeInstruction();
 
         /* ----- Update PC ----- */
         // for 'jmp' and 'wait' instruction
@@ -99,7 +104,7 @@ PioStateMachine::PioStateMachine()
     gpio.sideset_pindirs.fill(-1);
 }
 
-void PioStateMachine::doSideSet(uint16_t delay_side_set_field) 
+void PioStateMachine::doSideSet(uint16_t delay_side_set_field)
 {
     bool side_set_opt_bit = (delay_side_set_field >> 4) & 1;
     if (settings.sideset_opt == true)  // Side-set is optional and the opt bit is 1 (enable)
@@ -108,7 +113,7 @@ void PioStateMachine::doSideSet(uint16_t delay_side_set_field)
         {
             u16 delay_bit_count = 5 - settings.sideset_count - 1; // one bit less
             u16 sideSetField = delay_side_set_field >> delay_bit_count;
-            for (int i = 0; i < settings.sideset_count; i++) 
+            for (int i = 0; i < settings.sideset_count; i++)
             {
                 u16 bitVal = (sideSetField >> i) & 1;
 
@@ -125,7 +130,7 @@ void PioStateMachine::doSideSet(uint16_t delay_side_set_field)
     {
         u16 delay_bit_count = 5 - settings.sideset_count;
         u16 sideSetField = delay_side_set_field >> delay_bit_count;
-        for (int i = 0; i < settings.sideset_count; i++) 
+        for (int i = 0; i < settings.sideset_count; i++)
         {
             u16 bitVal = (sideSetField >> i) & 1;
 
@@ -359,7 +364,7 @@ void PioStateMachine::executeJmp()
 void PioStateMachine::executeWait()
 {
     // Obtain Instruction fields
-    u16 polarity = (currentInstruction >> 7) & 1; // bit 7
+    bool polarity = (currentInstruction >> 7) & 1; // bit 7
     u16 source = (currentInstruction >> 5) & 0b11; // bit 6:5
     u16 index = currentInstruction & 0b1'1111; // bit 4:0
 
@@ -393,7 +398,7 @@ void PioStateMachine::executeWait()
         }
         if (irq_flags[irq_wait_num] != polarity)
             condIsNotMet = true;
-        else if (irq_flags[irq_wait_num] == polarity && polarity == 1)
+        else if ((irq_flags[irq_wait_num] == polarity) && (polarity == 1))
             irq_flags[irq_wait_num] = false;
         // If Polarity is 1 IRQ flag is cleared by the sm when wait cond met. (s3.4.3.2)
         break;
@@ -616,11 +621,11 @@ void PioStateMachine::executeOut()
         regs.isr = data;
         regs.isr_shift_count = bitCount; // TODO: Need spec check (+= bitcount or = bitcount) (s3.2.3.3)
         break;
-    case 0b111: // EXEC   TODO: Need function check
+    case 0b111: 
         skip_increase_pc = true;
         skip_delay = true;
         exec_command = true;
-        currentInstruction = osrOriginal; // Next instruction (we dont increace pc next cycle)
+        currentInstruction = osrOriginal; // Next instruction (we dont increace pc next cycle) 
         break;
     default:
         LOG_ERROR("'out' have unknow destination");
@@ -822,11 +827,11 @@ void PioStateMachine::executeMov()
     case 0b011: // Reserved
         LOG_ERROR("'mov' on Reserved destination");
         return;
-    case 0b100: // EXEC  TODO: Need function check!!
+    case 0b100: // EXEC  
         skip_increase_pc = true;
         skip_delay = true;
         exec_command = true;
-        currentInstruction = data; // Next instruction (we dont increace pc next cycle)
+        currentInstruction = data; // Next instruction (we dont increace pc next cycle) 
         break;
     case 0b101: // PC
         skip_increase_pc = true;
@@ -834,7 +839,7 @@ void PioStateMachine::executeMov()
         break;
     case 0b110: //ISR
         regs.isr = data;
-        regs.isr_shift_count = 0;
+        regs.isr_shift_count = 0; // TODO: Is this correct? isr_count 0 means isr empty
         break;
     case 0b111: // OSR
         regs.osr = data;

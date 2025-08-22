@@ -27,9 +27,6 @@ target_link_libraries(${PROJECT_NAME} PRIVATE doctest::doctest)
 # Enable testing
 enable_testing()
 
-# Create tests directory structure if it doesn't exist
-file(MAKE_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/core)
-
 # List of all test targets
 set(PIO_TESTS
         set
