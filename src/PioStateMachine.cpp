@@ -573,7 +573,7 @@ void PioStateMachine::executeOut()
 
     // Generate mask
     u32 mask;
-    if (((regs.osr_shift_count + bitCount) >= settings.pull_threshold) && settings.autopull_enable)
+    if (((regs.osr_shift_count + bitCount) >= settings.pull_threshold) && settings.autopull_enable && (out_not_finished == false))
     {
         // data in osr is not enough
         first_shifted = settings.pull_threshold - regs.osr_shift_count;
@@ -644,10 +644,12 @@ void PioStateMachine::executeOut()
         }
         break;
     case 0b001: // X
+        // TODO: Check should we clear the register first or just shift in?
         regs.x &= ~mask;
         regs.x |= data;
         break;
     case 0b010: // Y
+        // TODO: Check should we clear the register first or just shift in?
         regs.y &= ~mask;
         regs.y |= data;
         break;

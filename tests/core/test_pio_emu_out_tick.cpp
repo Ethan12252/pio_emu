@@ -33,7 +33,7 @@ TEST_CASE("OUT: OSR to X register transfer (shift right and left)")
         pio.regs.x = 0;
         pio.instructionMemory[0] = buildOutInstruction(OutDestination::X, 16);
         pio.tick();
-        
+
         CHECK(pio.regs.x == 0x1234);
         CHECK(pio.regs.osr_shift_count == 16);
         CHECK(pio.regs.osr == 0xABCD);
@@ -47,7 +47,7 @@ TEST_CASE("OUT: OSR to X register transfer (shift right and left)")
         pio.regs.x = 0;
         pio.regs.pc = 0;
         pio.instructionMemory[0] = buildOutInstruction(OutDestination::X, 16);
-        
+
         pio.tick();
 
         CHECK(pio.regs.x == 0xABCD);
@@ -322,6 +322,27 @@ TEST_CASE("OUT: with autopull")
         CHECK(pio.tx_fifo_count == 0);        // be taken out
     }
 
+    SUBCASE("Autopull threshold exactly reached2")
+    {
+        pio.settings.autopull_enable = true;
+        pio.settings.pull_threshold = 32;
+        pio.regs.osr = 0x0000dead;
+        pio.regs.osr_shift_count = 16;
+        pio.regs.x = 0xffffffff;
+        pio.settings.out_shift_right = true;
+        pio.tx_fifo[0] = 0x12345678;
+        pio.tx_fifo_count = 1;
+        pio.instructionMemory[0] = buildOutInstruction(OutDestination::X, 16);
+        pio.tick();
+        CHECK(pio.regs.pc == 0); // should spend one more cycle
+        pio.tick();
+
+        CHECK(pio.regs.x == 0xffffdead);      // TODO: check should it clear x?
+        CHECK(pio.regs.osr_shift_count == 0); // nothing shifted
+        CHECK(pio.regs.osr == 0x12345678);    // should be the new data
+        CHECK(pio.tx_fifo_count == 0);        // be taken out
+    }
+
     SUBCASE("Autopull threshold exceeded")
     {
         pio.settings.autopull_enable = true;
@@ -343,6 +364,56 @@ TEST_CASE("OUT: with autopull")
         CHECK(pio.regs.osr == 0x000000BB);
         CHECK(pio.tx_fifo[0] == 0x00000fff);
         CHECK(pio.tx_fifo_count == 1);
+    }
+
+    SUBCASE("Autopull threshold exceeded2")
+    {
+        pio.settings.autopull_enable = true;
+        pio.settings.pull_threshold = 20;
+        pio.regs.osr = 0b1010'1011;
+        pio.regs.osr_shift_count = 12;
+        pio.regs.x = 0;
+        pio.settings.out_shift_right = true;
+        pio.tx_fifo[0] = 0b0001'0010'0011'0100'0101'0110'0111'1000;
+        pio.tx_fifo[1] = 0x87654321;
+        pio.tx_fifo_count = 2;
+        pio.instructionMemory[0] = buildOutInstruction(OutDestination::X, 18); // out x, 18
+        pio.tick();
+        CHECK(pio.regs.pc == 0); // should spend one more cycle
+        pio.tick();
+
+        CHECK(pio.regs.x == 0b1010'1011'10'0111'1000);
+        CHECK(pio.regs.osr_shift_count == 10);
+        CHECK(pio.regs.osr == 0b0001'0010'0011'0100'0101'01);
+        CHECK(pio.tx_fifo[0] == 0x87654321);
+        CHECK(pio.tx_fifo_count == 1);
+    }
+
+    SUBCASE("Autopull threshold exceeded3")
+    {
+        pio.settings.autopull_enable = true;
+        pio.settings.pull_threshold = 32;
+        pio.regs.osr = 0x0deadbee;
+        pio.regs.osr_shift_count = 4;
+        pio.regs.x = 0xffffffff;
+        pio.settings.out_shift_right = true;
+        pio.tx_fifo[0] = 0xABCEEFBD;
+        pio.tx_fifo[1] = 0xffffffff;
+        pio.tx_fifo[2] = 0xf12356ff;
+        pio.tx_fifo_count = 3;
+
+        pio.regs.pc = 0;
+        pio.instructionMemory[0] = 0x6020;
+        pio.tick();
+        CHECK(pio.regs.pc == 0); // should spend one more cycle
+        pio.tick();
+
+        CHECK(pio.regs.x == 0xdeadbeed);
+        CHECK(pio.regs.osr_shift_count == 4);
+        CHECK(pio.regs.osr == 0x0ABCEEFB);
+        CHECK(pio.tx_fifo[0] == 0xffffffff);
+        CHECK(pio.tx_fifo[1] == 0xf12356ff);
+        CHECK(pio.tx_fifo_count == 2);
     }
 
     SUBCASE("Autopull with empty TX FIFO")
