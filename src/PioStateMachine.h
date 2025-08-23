@@ -89,7 +89,7 @@ public:
     bool pull_is_stalling = false;
 
     // IRQs
-    std::array<bool, 8> irq_flags = { 0 };
+    std::array<bool, 8> irq_flags;
     bool irq_is_waiting = false;
 
     void executeInstruction();

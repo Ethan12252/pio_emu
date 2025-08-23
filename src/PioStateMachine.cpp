@@ -29,7 +29,11 @@ void PioStateMachine::pull_from_tx_fifo()
 void PioStateMachine::tick()
 {
     if (delay_delay == true)  // stalling
+    {
+        if (irq_is_waiting == true)
+            goto _EXEC_INST;
         goto update_and_exit;
+    }
     else
     {
         /* ----- Handle delay ----- */
@@ -40,7 +44,7 @@ void PioStateMachine::tick()
         }
 
         // TODO: Check If we want to do this before, or after executeinst?
-        /* ----- Update the 'status' depending on RxFIFO or TxFIFO count ----- */ 
+        /* ----- Update the 'status' depending on RxFIFO or TxFIFO count ----- */
         if (settings.status_sel == 0)
         {
             // For Tx FIFO, All-ones if TX FIFO count < N, otherwise all-zeroes
@@ -62,6 +66,7 @@ void PioStateMachine::tick()
         else
             exec_command = false;
 
+    _EXEC_INST:
         executeInstruction();
 
         /* ----- Update PC ----- */
@@ -87,6 +92,7 @@ void PioStateMachine::tick()
 
 update_and_exit:
     setAllGpio();
+
     clock++;
 }
 
@@ -102,6 +108,12 @@ PioStateMachine::PioStateMachine()
     gpio.set_pindirs.fill(-1);
     gpio.out_pindirs.fill(-1);
     gpio.sideset_pindirs.fill(-1);
+
+    irq_flags.fill(false);
+
+    currentInstruction = 0xa042; //nop
+    instructionMemory.fill(0xa042); //nop
+    stateMachineNumber = 0;
 }
 
 void PioStateMachine::doSideSet(uint16_t delay_side_set_field)
@@ -621,7 +633,7 @@ void PioStateMachine::executeOut()
         regs.isr = data;
         regs.isr_shift_count = bitCount; // TODO: Need spec check (+= bitcount or = bitcount) (s3.2.3.3)
         break;
-    case 0b111: 
+    case 0b111:
         skip_increase_pc = true;
         skip_delay = true;
         exec_command = true;
@@ -883,6 +895,7 @@ void PioStateMachine::executeIrq()
         {
             // Irq have been cleared
             irq_is_waiting = false;
+            delay_delay = false;
             return;
         }
     }
@@ -891,7 +904,7 @@ void PioStateMachine::executeIrq()
         irq_flags[irqNum] = false; // clear irq
     else
     {
-        // set irq
+        // set irq        
         irq_flags[irqNum] = true;
         if (wait == 1)
         {

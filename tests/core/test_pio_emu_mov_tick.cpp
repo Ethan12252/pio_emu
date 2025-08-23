@@ -4,25 +4,25 @@
 #include "../../src/PioStateMachine.h"
 
 enum class MovDestination : uint8_t {
-    PINS = 0b000,  
-    X = 0b001,     
-    Y = 0b010,     
+    PINS = 0b000,
+    X = 0b001,
+    Y = 0b010,
     // 0b011 is Reserved
-    EXEC = 0b100,  
-    PC = 0b101,    
-    ISR = 0b110,   
-    OSR = 0b111    
+    EXEC = 0b100,
+    PC = 0b101,
+    ISR = 0b110,
+    OSR = 0b111
 };
 
 enum class MovSource : uint8_t {
-    PINS = 0b000,    
-    X = 0b001,       
-    Y = 0b010,       
-    NULL_ = 0b011,   
+    PINS = 0b000,
+    X = 0b001,
+    Y = 0b010,
+    NULL_ = 0b011,
     // 0b100 is Reserved
-    STATUS = 0b101,  
-    ISR = 0b110,     
-    OSR = 0b111      
+    STATUS = 0b101,
+    ISR = 0b110,
+    OSR = 0b111
 };
 
 enum class MovOperation : uint8_t {
@@ -101,7 +101,7 @@ TEST_CASE("MOV: PINS <- X") {
 TEST_CASE("MOV: PC <- X (Unconditional jump)")
 {
     PioStateMachine pio;
-    pio.regs.x  = 7;
+    pio.regs.x = 7;
     pio.regs.pc = 0;
     pio.instructionMemory[0] = buildMovInstruction(MovDestination::PC, MovOperation::NONE, MovSource::X);
     pio.tick();
@@ -112,7 +112,7 @@ TEST_CASE("MOV: EXEC <- X (Execute register as instruction)")
 {
     PioStateMachine pio;
     // Place a JMP Always to 5 in X
-    pio.regs.x  = 0x0004;  // jmp 4
+    pio.regs.x = 0x0004;  // jmp 4
     pio.regs.pc = 0;
     pio.instructionMemory[0] = buildMovInstruction(MovDestination::EXEC, MovOperation::NONE, MovSource::X);
     pio.tick();
@@ -129,7 +129,7 @@ TEST_CASE("MOV: ISR <- OSR, ISR reset")
     pio.regs.isr_shift_count = 8;
     pio.instructionMemory[0] = buildMovInstruction(MovDestination::ISR, MovOperation::NONE, MovSource::OSR);
     pio.tick();
-    CHECK(pio.regs.isr == 0xDEADBEEF); 
+    CHECK(pio.regs.isr == 0xDEADBEEF);
     CHECK(pio.regs.isr_shift_count == 0); // s3.4.8.2 Input shift counter is reset to 0 by this op (i.e. empty)
     //CHECK(pio.regs.osr == 0); TODO: Should source also cleared? Current code does not
 }
@@ -142,7 +142,7 @@ TEST_CASE("MOV: OSR <- ISR, OSR reset")
     pio.regs.osr = 0;
     pio.instructionMemory[0] = buildMovInstruction(MovDestination::OSR, MovOperation::NONE, MovSource::ISR);
     pio.tick();
-    CHECK(pio.regs.osr == 0xCAFEBABE); 
+    CHECK(pio.regs.osr == 0xCAFEBABE);
     CHECK(pio.regs.osr_shift_count == 0); // s3.4.8.2 Input shift counter is reset to 0 by this op (i.e. empty)
     //CHECK(pio.regs.isr == 0); TODO: Should source also cleared? Current code does not
 }
@@ -192,7 +192,7 @@ TEST_CASE("MOV: with delay")
     pio.regs.x = 0;
     pio.instructionMemory[0] = buildMovInstruction(MovDestination::X, MovOperation::NONE, MovSource::Y, 2);
     pio.instructionMemory[1] = 0xa042;  // nop
-    
+
     pio.tick();  // Instruction it self
     CHECK(pio.regs.x == 0xA5A5A5A5);
     CHECK(pio.regs.pc == 1);
