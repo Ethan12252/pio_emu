@@ -46,22 +46,22 @@ void PioStateMachine::tick()
         {
             should_execute = true;
         }
-
-        /* ----- Update the 'status' depending on RxFIFO or TxFIFO count ----- */
-        // TODO: Check If we want to do this before, or after executeinst?
-        if (settings.status_sel == 0)
-        {
-            // For Tx FIFO, All-ones if TX FIFO count < N, otherwise all-zeroes
-             regs.status = (tx_fifo_count < settings.fifo_level_N) ? 0xff'ff'ff'ff : 0;
-        }
-        else if (settings.status_sel == 1)
-        {
-            // For Rx FIFO
-            regs.status = (rx_fifo_count < settings.fifo_level_N) ? 0xff'ff'ff'ff : 0;
-        }
-        else
-            LOG_ERROR("Unknow status_sel");
     }
+
+    /* ----- Update the 'status' depending on RxFIFO or TxFIFO count ----- */
+        // TODO: Check If we want to do this before, or after executeinst?
+    if (settings.status_sel == 0)
+    {
+        // For Tx FIFO, All-ones if TX FIFO count < N, otherwise all-zeroes
+        regs.status = (tx_fifo_count < settings.fifo_level_N) ? 0xff'ff'ff'ff : 0;
+    }
+    else if (settings.status_sel == 1)
+    {
+        // For Rx FIFO
+        regs.status = (rx_fifo_count < settings.fifo_level_N) ? 0xff'ff'ff'ff : 0;
+    }
+    else
+        LOG_ERROR("Unknow status_sel");
 
     if (should_execute == true)
     {
@@ -541,6 +541,13 @@ void PioStateMachine::executeOut()
         bitCount = 32;
     u32 osrOriginal = regs.osr; // For EXEC
 
+    // flag
+    // when is bitcount is bigger then what we have in osr and autopull is enabled, we can only shift what ever we have now,
+    // letfovers will be shift out next cycle.
+    static bool out_not_finished = false;
+    static int first_shifted = 0;
+    u16 bitCountOriginal = bitCount;
+
     // (s3.4.5.2):autopull
     if (settings.autopull_enable)
     {
@@ -563,9 +570,33 @@ void PioStateMachine::executeOut()
 
     // Get data out of osr
     u32 data = 0;
-    u32 mask = (1 << bitCount) - 1;
+
+    // Generate mask
+    u32 mask;
+    if (((regs.osr_shift_count + bitCount) >= settings.pull_threshold) && settings.autopull_enable)
+    {
+        // data in osr is not enough
+        first_shifted = settings.pull_threshold - regs.osr_shift_count;
+        bitCount = first_shifted;
+        mask = (1 << first_shifted) - 1; // can't shift out all the bits in this cycle, shift till pull_thres
+        out_not_finished = true;
+    }
+    else if (out_not_finished == true)
+    {
+        // second times
+        mask = (1 << (bitCount - first_shifted)) - 1;
+        bitCount = bitCount - first_shifted;
+        // reset states
+        out_not_finished = false;
+        first_shifted = 0;
+    }
+    else
+        mask = (1 << bitCount) - 1;
+
     if (bitCount == 32) // mask calc when bitcount=32 will fail(overflow)
         mask = 0xff'ff'ff'ff;
+
+    // get data
     if (settings.out_shift_right)
     {
         // shift right
@@ -588,6 +619,13 @@ void PioStateMachine::executeOut()
     if (regs.osr_shift_count > 32)
         regs.osr_shift_count = 32; // (s3.4.5.2) saturating at 32.
 
+    // Shift mask for out_not_finished
+    if (out_not_finished == true)
+    {
+        mask = mask << (bitCountOriginal - first_shifted);
+        data = data << (bitCountOriginal - first_shifted);
+    }
+
     // Put the data to destination
     switch (destination)
     {
@@ -606,10 +644,12 @@ void PioStateMachine::executeOut()
         }
         break;
     case 0b001: // X
-        regs.x = data;
+        regs.x &= ~mask;
+        regs.x |= data;
         break;
     case 0b010: // Y
-        regs.y = data;
+        regs.y &= ~mask;
+        regs.y |= data;
         break;
     case 0b011: // NULL (discard data)
         break;
@@ -636,7 +676,7 @@ void PioStateMachine::executeOut()
         regs.isr = data;
         regs.isr_shift_count = bitCount; // TODO: Need spec check (+= bitcount or = bitcount) (s3.2.3.3)
         break;
-    case 0b111:
+    case 0b111: // EXEC
         skip_increase_pc = true;
         skip_delay = true;
         exec_command = true;
@@ -645,6 +685,26 @@ void PioStateMachine::executeOut()
     default:
         LOG_ERROR("'out' have unknow destination");
         return;
+    }
+
+    // do autopull
+    if (settings.autopull_enable)
+    {
+        // Check if we shift out enough bit so we have to perform autopull
+        if ((regs.osr_shift_count) >= settings.pull_threshold) // yes, do autopull
+        {
+            if (tx_fifo_count > 0) // tx fifo not empty
+            {
+                pull_from_tx_fifo();
+            }
+            // stall (P.339): However, it cannot fill an empty OSR and 'OUT' it on the same cycle,
+            //                due to the long logic path this would create.
+            skip_increase_pc = true;
+            delay_delay = true;
+            pull_is_stalling = true;
+            LOG_WARNING("pull operation is stalling in OUT instruction");
+            return;
+        }
     }
 }
 

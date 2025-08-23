@@ -143,7 +143,7 @@ TEST_CASE("MOV: OSR <- ISR, OSR reset")
     pio.instructionMemory[0] = buildMovInstruction(MovDestination::OSR, MovOperation::NONE, MovSource::ISR);
     pio.tick();
     CHECK(pio.regs.osr == 0xCAFEBABE);
-    CHECK(pio.regs.osr_shift_count == 0); // s3.4.8.2 Input shift counter is reset to 0 by this op (i.e. empty)
+    CHECK(pio.regs.osr_shift_count == 0); // s3.4.8.2 Output shift counter is reset to 0 by this op (i.e. full)
     //CHECK(pio.regs.isr == 0); TODO: Should source also cleared? Current code does not
 }
 
