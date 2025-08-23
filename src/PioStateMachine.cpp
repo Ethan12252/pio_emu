@@ -28,11 +28,11 @@ void PioStateMachine::pull_from_tx_fifo()
 
 void PioStateMachine::tick()
 {
+    bool should_execute = false;
     if (delay_delay == true)  // stalling
     {
-        if (irq_is_waiting == true)
-            goto _EXEC_INST;
-        goto update_and_exit;
+        if (irq_is_waiting == true || pull_is_stalling || push_is_stalling)
+            should_execute = true;
     }
     else
     {
@@ -40,15 +40,19 @@ void PioStateMachine::tick()
         if (regs.delay > 0)
         {
             regs.delay--;
-            goto update_and_exit;
+            should_execute = false;
+        }
+        else
+        {
+            should_execute = true;
         }
 
-        // TODO: Check If we want to do this before, or after executeinst?
         /* ----- Update the 'status' depending on RxFIFO or TxFIFO count ----- */
+        // TODO: Check If we want to do this before, or after executeinst?
         if (settings.status_sel == 0)
         {
             // For Tx FIFO, All-ones if TX FIFO count < N, otherwise all-zeroes
-            regs.status = (tx_fifo_count < settings.fifo_level_N) ? 0xff'ff'ff'ff : 0;
+             regs.status = (tx_fifo_count < settings.fifo_level_N) ? 0xff'ff'ff'ff : 0;
         }
         else if (settings.status_sel == 1)
         {
@@ -56,17 +60,17 @@ void PioStateMachine::tick()
             regs.status = (rx_fifo_count < settings.fifo_level_N) ? 0xff'ff'ff'ff : 0;
         }
         else
-        {
             LOG_ERROR("Unknow status_sel");
-        }
+    }
 
+    if (should_execute == true)
+    {
         /* ----- Get new instruction and execute it ----- */
         if (exec_command == false)
             currentInstruction = instructionMemory[regs.pc];
         else
             exec_command = false;
 
-    _EXEC_INST:
         executeInstruction();
 
         /* ----- Update PC ----- */
@@ -90,9 +94,8 @@ void PioStateMachine::tick()
         }
     }
 
-update_and_exit:
+    /* Update gpio */
     setAllGpio();
-
     clock++;
 }
 
@@ -542,7 +545,7 @@ void PioStateMachine::executeOut()
     if (settings.autopull_enable)
     {
         // Check if we shift out enough bit so we have to perform autopull
-        if (regs.osr_shift_count >= settings.pull_threshold) // yes, do autopull
+        if ((regs.osr_shift_count) >= settings.pull_threshold) // yes, do autopull
         {
             if (tx_fifo_count > 0) // tx fifo not empty
             {

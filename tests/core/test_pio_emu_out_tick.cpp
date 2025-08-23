@@ -283,18 +283,21 @@ TEST_CASE("OUT: with autopull")
     {
         pio.settings.autopull_enable = true;
         pio.settings.pull_threshold = 24;
-        pio.regs.osr = 0xABCDEF12;
+        pio.regs.osr = 0x00ABCDEF;
         pio.regs.osr_shift_count = 8;
         pio.regs.x = 0;
         pio.settings.out_shift_right = true;
         pio.tx_fifo[0] = 0x87654321;
         pio.tx_fifo_count = 1;
         pio.instructionMemory[0] = buildOutInstruction(OutDestination::X, 8);
+        pio.instructionMemory[1] = 0xa042; // nop
+        pio.tick();
+        CHECK(pio.regs.pc == 1); // pc should increase normally
         pio.tick();
 
-        CHECK(pio.regs.x == 0x12);
+        CHECK(pio.regs.x == 0xEF);
         CHECK(pio.regs.osr_shift_count == 16);
-        CHECK(pio.regs.osr == 0x00ABCDEF);
+        CHECK(pio.regs.osr == 0x0000ABCD);
         CHECK(pio.tx_fifo_count == 1);
     }
 
@@ -302,17 +305,18 @@ TEST_CASE("OUT: with autopull")
     {
         pio.settings.autopull_enable = true;
         pio.settings.pull_threshold = 16;
-        pio.regs.osr = 0x12345678;
+        pio.regs.osr = 0x000000ab;
         pio.regs.osr_shift_count = 8;
         pio.regs.x = 0;
         pio.settings.out_shift_right = true;
-        pio.tx_fifo[0] = 0x87654321;
+        pio.tx_fifo[0] = 0x12345678;
         pio.tx_fifo_count = 1;
         pio.instructionMemory[0] = buildOutInstruction(OutDestination::X, 8);
         pio.tick();
+        CHECK(pio.regs.pc == 0); // should spend one more cycle
         pio.tick();
 
-        CHECK(pio.regs.x == 0x78);
+        CHECK(pio.regs.x == 0xab);
         CHECK(pio.regs.osr_shift_count == 0);
         CHECK(pio.regs.osr == 0x87654321);
         CHECK(pio.tx_fifo_count == 0);
@@ -331,6 +335,7 @@ TEST_CASE("OUT: with autopull")
         pio.tx_fifo_count = 2;
         pio.instructionMemory[0] = buildOutInstruction(OutDestination::X, 8);
         pio.tick();
+        CHECK(pio.regs.pc == 0); // should spend one more cycle
         pio.tick();
 
         CHECK(pio.regs.x == 0xAA);
@@ -352,6 +357,7 @@ TEST_CASE("OUT: with autopull")
         pio.instructionMemory[0] = buildOutInstruction(OutDestination::X, 8);
         pio.instructionMemory[1] = buildOutInstruction(OutDestination::X, 8);
         pio.tick();
+        CHECK(pio.regs.pc == 0); // should spend one more cycle
         pio.tick();
 
         CHECK(pio.regs.x == 0x78);
