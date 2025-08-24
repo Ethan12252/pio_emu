@@ -242,7 +242,7 @@ void PioStateMachine::executeInstruction()
 {
     // Get Opcode field (15:13)
     u16 opcode = (currentInstruction & 0xe000) >> 13;
-    u16 isPush = (currentInstruction >> 7) & 1u; // bit 7 = 0 為 PUSH, = 1 為 PULL
+    bool isPush = !((currentInstruction >> 7) & 1u); // bit 7 = 0 為 PUSH, = 1 為 PULL
     u16 delay_side_set_field = (currentInstruction >> 8) & 0b11111; // bit 12:8
 
     // --- Extract delay and side-set bits ---

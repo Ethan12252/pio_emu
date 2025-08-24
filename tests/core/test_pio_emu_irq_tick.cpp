@@ -8,6 +8,7 @@ uint16_t buildIrqInstruction(bool clear, bool wait, uint8_t index)
     return (0b110 << 13) | ((clear ? 1 : 0) << 6) | ((wait ? 1 : 0) << 5) | (index & 0x1F);
 }
 
+
 TEST_CASE("executeIrq() test")
 {
     PioStateMachine pio;
@@ -125,7 +126,8 @@ TEST_CASE("executeIrq() test")
         // Set IRQ flag with MSB and bit 2 set (0x14)
         // With state machine 1, this should affect flag 5 (4+1=5, where bit 2 remains unchanged)
         pio.regs.pc = 0;
-        pio.instructionMemory[0] = buildIrqInstruction(false, false, 0x14);
+        //pio.instructionMemory[0] = buildIrqInstruction(false, false, 0x14);
+        pio.instructionMemory[0] = 0xc014; // irq nowait 2 rel     
         pio.tick();
 
         // Check the correct flag is set
@@ -140,7 +142,13 @@ TEST_CASE("executeIrq() test")
         pio.tick();
 
         // Check the correct flag is affected
-        CHECK(pio.irq_flags[5] == false);
+        CHECK(pio.irq_flags[0] == false);
+        CHECK(pio.irq_flags[1] == false);
+        CHECK(pio.irq_flags[2] == false);
+        CHECK(pio.irq_flags[3] == false);
+        CHECK(pio.irq_flags[4] == false);
+        CHECK(pio.irq_flags[6] == false);
+        CHECK(pio.irq_flags[7] == false);
     }
 
     SUBCASE("IRQ index out of bounds")

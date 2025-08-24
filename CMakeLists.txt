@@ -31,7 +31,6 @@ enable_testing()
 set(PIO_TESTS
         set
         irq
-        out
         out_tick
         in
         gpioset
@@ -41,6 +40,7 @@ set(PIO_TESTS
         jmp
         irq_tick
         mov_tick
+        pull_tick
 )
 
 # Create test executables from the list
