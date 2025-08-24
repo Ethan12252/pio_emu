@@ -754,8 +754,8 @@ void PioStateMachine::executePush()
 void PioStateMachine::executePull()
 {
     // Obtain Instruction fields
-    u16 ifEmpty = (currentInstruction >> 6) & 1; // bits 6
-    u16 block = (currentInstruction >> 5) & 1; // bits 5
+    bool ifEmpty = (currentInstruction >> 6) & 1; // bits 6
+    bool block = (currentInstruction >> 5) & 1; // bits 5
 
     // Check if tx fifo is empty (nothing to pull)
     if (tx_fifo_count != 0)
