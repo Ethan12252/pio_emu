@@ -747,6 +747,8 @@ void PioStateMachine::executePush()
             // continue, but clear isr (s3.4.6.2)
             push_is_stalling = false;
             regs.isr = 0;
+            regs.isr_shift_count = 0;
+            LOG_WARNING("RX_STALL, isr is claered, potential data lost");
         }
     }
 }
