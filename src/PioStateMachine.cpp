@@ -31,7 +31,7 @@ void PioStateMachine::tick()
     bool should_execute = false;
     if (delay_delay == true)  // stalling
     {
-        if (irq_is_waiting == true || pull_is_stalling || push_is_stalling)
+        if (irq_is_waiting == true || pull_is_stalling || push_is_stalling || wait_is_stalling)
             should_execute = true;
     }
     else
@@ -389,6 +389,8 @@ void PioStateMachine::executeWait()
     case 0b00: // GPIO: wait for gpio input selected by index (absolute)
         if (gpio.raw_data[index] != polarity)
             condIsNotMet = true;
+        else
+            condIsNotMet = false;
         break;
     case 0b01: // PIN: sm's input io mapping, index select which of the mapped bit to wait
         if (settings.in_base == -1)
@@ -399,6 +401,9 @@ void PioStateMachine::executeWait()
         // pin is selected by adding Index to the PINCTRL_IN_BASE configuration, modulo 32 (s3.4.3.2)
         if (gpio.raw_data[(settings.in_base + index) % 32] != polarity)
             condIsNotMet = true;
+        else
+            condIsNotMet = false;
+            
         break;
     case 0b10: // IRQ: wait for PIO IRQ flag selected by Index (見3.4.9.2)  TODO: Need check!(irq number calculation)
     {
@@ -411,11 +416,19 @@ void PioStateMachine::executeWait()
             irq_wait_num = (index_2lsbs + stateMachineNumber) % 4; // modulo-4 addition on the "two LSBs"
             irq_wait_num |= (index & 0b100); // Preserve bit 2
         }
+
         if (irq_flags[irq_wait_num] != polarity)
             condIsNotMet = true;
         else if ((irq_flags[irq_wait_num] == polarity) && (polarity == 1))
+        {
+            // If Polarity is 1 IRQ flag is cleared by the sm when wait cond met. (s3.4.3.2)
             irq_flags[irq_wait_num] = false;
-        // If Polarity is 1 IRQ flag is cleared by the sm when wait cond met. (s3.4.3.2)
+            condIsNotMet = false;
+        }
+        else
+            condIsNotMet = false;
+
+            
         break;
     }
     case 0b11: // Reserved
@@ -429,6 +442,13 @@ void PioStateMachine::executeWait()
         // wait:A WAIT instruction’s condition is not yet met (s3.2.4)
         skip_increase_pc = true;
         delay_delay = true;
+        wait_is_stalling = true;
+    }
+    else
+    {
+        skip_increase_pc = false;
+        delay_delay = false;
+        wait_is_stalling = false;
     }
 }
 

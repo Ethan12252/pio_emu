@@ -19,6 +19,7 @@ public:
     bool skip_delay = false;   // (s3.4.5.2) for 'out exec' and 'mov exec' "Delay cycles on the initial OUT are ignored"
     bool exec_command = false; // for 'out exec' and 'mov exec', might alter the logic for get nextInstruction for memory
     int clock = 0;
+    bool wait_is_stalling = false;
 
     // State registers
     struct Registers
