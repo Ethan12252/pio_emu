@@ -42,6 +42,7 @@ set(PIO_TESTS
         mov_tick
         pull_tick
         push_tick
+        in_tick
 )
 
 # Create test executables from the list
