@@ -7,6 +7,8 @@ set(CMAKE_CXX_STANDARD 20)
 set(COMMON_SOURCES
         src/PioStateMachine.cpp
         src/PioStateMachine.h
+        src/TimingDiagram.cpp
+        src/TimingDiagram.h
         src/logger/Logger.cpp
         src/logger/Logger.h
 )
