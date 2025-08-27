@@ -586,7 +586,14 @@ void PioStateMachine::executeOut()
             LOG_WARNING("pull operation is stalling in OUT instruction");
             return;
         }
+        else
+        {
+            skip_increase_pc = false;
+            delay_delay = false;
+            pull_is_stalling = false;
+        }
     }
+    
 
     // Get data out of osr
     u32 data = 0;
@@ -665,11 +672,13 @@ void PioStateMachine::executeOut()
         break;
     case 0b001: // X
         // TODO: Check should we clear the register first or just shift in?
+        regs.x = 0;
         regs.x &= ~mask;
         regs.x |= data;
         break;
     case 0b010: // Y
         // TODO: Check should we clear the register first or just shift in?
+        regs.y = 0;
         regs.y &= ~mask;
         regs.y |= data;
         break;
@@ -727,7 +736,14 @@ void PioStateMachine::executeOut()
             LOG_WARNING("pull operation is stalling in OUT instruction");
             return;
         }
+        else
+        {
+            skip_increase_pc = false;
+            delay_delay = false;
+            pull_is_stalling = false;
+        }
     }
+    
 }
 
 

@@ -29,7 +29,7 @@ public:
         uint32_t isr = 0;
         uint32_t osr = 0;
         uint32_t isr_shift_count = 0;
-        uint32_t osr_shift_count = 0;
+        uint32_t osr_shift_count = 32;
         uint32_t pc = 0;
         uint32_t delay = 0;
         uint32_t status = 0;  // Indecate FIFO level > fifo_level_N, status_sel 0 for Tx 1 for Rx
@@ -54,7 +54,7 @@ public:
         int  warp_start = 0;
         int  warp_end = 31;
         bool in_shift_right = false;
-        bool out_shift_right = true;
+        bool out_shift_right = false;  // default is shift left
         bool in_shift_autopush = false;
         bool out_shift_autopull = false;
         bool autopull_enable = false;

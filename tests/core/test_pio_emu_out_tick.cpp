@@ -477,6 +477,7 @@ TEST_CASE("OUT: with different bit counts")
     SUBCASE("Partial bit transfers")
     {
         pio.regs.osr = 0xFFFFFFFF;
+        pio.regs.osr_shift_count = 0;
         pio.regs.x = 0;
         pio.settings.out_shift_right = true;
         pio.instructionMemory[0] = buildOutInstruction(OutDestination::X, 1);
