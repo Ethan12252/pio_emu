@@ -566,6 +566,7 @@ void PioStateMachine::executeOut()
     // letfovers will be shift out next cycle.
     static bool out_not_finished = false;
     static int first_shifted = 0;
+    bool isSecond = false;
     u16 bitCountOriginal = bitCount;
 
     // (s3.4.5.2):autopull
@@ -606,7 +607,8 @@ void PioStateMachine::executeOut()
         first_shifted = settings.pull_threshold - regs.osr_shift_count;
         bitCount = first_shifted;
         mask = (1 << first_shifted) - 1; // can't shift out all the bits in this cycle, shift till pull_thres
-        out_not_finished = true;
+        //if(!(regs.osr_shift_count + bitCount) == settings.pull_threshold)
+            out_not_finished = true;
     }
     else if (out_not_finished == true)
     {
@@ -616,6 +618,7 @@ void PioStateMachine::executeOut()
         // reset states
         out_not_finished = false;
         first_shifted = 0;
+        isSecond = true;
     }
     else
         mask = (1 << bitCount) - 1;
@@ -672,13 +675,15 @@ void PioStateMachine::executeOut()
         break;
     case 0b001: // X
         // TODO: Check should we clear the register first or just shift in?
-        regs.x = 0;
+        if (!isSecond)
+            regs.x = 0;
         regs.x &= ~mask;
         regs.x |= data;
         break;
     case 0b010: // Y
         // TODO: Check should we clear the register first or just shift in?
-        regs.y = 0;
+        if (!isSecond)
+            regs.y = 0;
         regs.y &= ~mask;
         regs.y |= data;
         break;

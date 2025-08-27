@@ -104,6 +104,7 @@ TEST_CASE("pull instruction test")
         pio.regs.x = 0xCAFEBABE;
         pio.settings.pull_threshold = 20;
         pio.settings.autopull_enable = false;
+        pio.settings.out_shift_right = true;
         pio.regs.osr_shift_count = 8;
         pio.tx_fifo[0] = 0xdeadbeef;
         pio.tx_fifo_count = 1;

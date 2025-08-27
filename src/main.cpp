@@ -59,7 +59,7 @@ int main() {
         fmt::print("clock: {:<3}, pin22: {}, pc: {}, osr: {:#010x} osr_count: {:<2}\n", pio.clock, pio.gpio.raw_data[22], pio.regs.pc, pio.regs.osr, pio.regs.osr_shift_count);
         if (!((pio.clock - 5) % 10))
         {
-            static int ist = 0;
+            static int ist = 1;
             fmt::print("data: {:<2}\n", ist++);
         }
     }

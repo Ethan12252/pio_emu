@@ -337,7 +337,7 @@ TEST_CASE("OUT: with autopull")
         CHECK(pio.regs.pc == 0); // should spend one more cycle
         pio.tick();
 
-        CHECK(pio.regs.x == 0xffffdead);      // TODO: check should it clear x?
+        CHECK(pio.regs.x == 0x0000dead);      // TODO: check should it clear x?
         CHECK(pio.regs.osr_shift_count == 0); // nothing shifted
         CHECK(pio.regs.osr == 0x12345678);    // should be the new data
         CHECK(pio.tx_fifo_count == 0);        // be taken out
