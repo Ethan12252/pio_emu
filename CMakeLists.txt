@@ -46,6 +46,7 @@ set(PIO_TESTS
         push_tick
         in_tick
         wait_tick
+        ws2812
 )
 
 # Create test executables from the list

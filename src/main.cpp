@@ -6,25 +6,14 @@
 
 int main() {
     
-
     PioStateMachine pio;
-    /*
-        .wrap_target
-        bitloop:
-            out x, 1       side 0 [T3 - 1] ; Side-set still takes place when instruction stalls
-            jmp !x do_zero side 1 [T1 - 1] ; Branch on the bit we shifted out. Positive pulse
-        do_one:
-            jmp  bitloop   side 1 [T2 - 1] ; Continue driving high, for a long pulse
-        do_zero:
-            nop            side 0 [T2 - 1] ; Or drive low, for a short pulse
-        .wrap
-    */
+
     static const uint16_t ws2812_program_instructions[] = {
         //     .wrap_target
-        0x6321, //  0: out    x, 1    side 0 [3] 
-        0x1223, //  1: jmp    !x, 3   side 1 [2] 
-        0x1200, //  2: jmp    0       side 1 [2] 
-        0xa242, //  3: nop            side 0 [2] 
+        0x6321, //  0: out    x, 1    side 0 [3] ; Side-set still takes place when instruction stalls
+        0x1223, //  1: jmp    !x, 3   side 1 [2] ; Branch on the bit we shifted out. Positive pulse
+        0x1200, //  2: jmp    0       side 1 [2] ; Continue driving high, for a long pulse
+        0xa242, //  3: nop            side 0 [2] ; Or drive low, for a short pulse
         //     .wrap
     };
 
@@ -46,16 +35,17 @@ int main() {
 
     // data
     pio.tx_fifo[0] = 0xba'ab'ff'00;
-    //pio.tx_fifo[0] = 0;
-    pio.tx_fifo_count++;
+    pio.tx_fifo[1] = 0xff'12'ff'00;
+    pio.tx_fifo_count = 2;
 
     for (size_t i = 0; i < 24; i++)
-        fmt::print("{:<2}: {:#010x}\n", i, pio.tx_fifo[0] << i);
+        fmt::print("{:<2}: {:#010x}\n\n", i, pio.tx_fifo[0] << i);
 
     // tick
-    for (int i = 0; i < 250; ++i) 
+    for (int i = 0; i < 245 * 2; ++i) 
     {
         pio.tick(); // Update the emulator
+        //fmt::print("{}", pio.gpio.raw_data[22] ? '-' : '_');
         fmt::print("clock: {:<3}, pin22: {}, pc: {}, osr: {:#010x} osr_count: {:<2}\n", pio.clock, pio.gpio.raw_data[22], pio.regs.pc, pio.regs.osr, pio.regs.osr_shift_count);
         if (!((pio.clock - 5) % 10))
         {
@@ -64,5 +54,4 @@ int main() {
         }
     }
 
-    return 0;
-}
+    return 0;}
