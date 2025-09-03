@@ -10,6 +10,13 @@
     {
       "name": "fmt",
       "version>=": "11.0.2#1"
+    },
+    {
+      "name": "imgui",
+      "features": [
+        "win32-binding",
+        "dx11-binding"
+      ]
     }
   ]
 }

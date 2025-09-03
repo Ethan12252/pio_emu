@@ -13,18 +13,35 @@ set(COMMON_SOURCES
         src/logger/Logger.h
 )
 
-# Main executable
+# Main executable src/main.cpp
 add_executable(pio_emu
-        src/main.cpp
+        src/gui/imgui_test.cpp
         ${COMMON_SOURCES}
 )
 
 # Find required packages
+# fmt
 find_package(fmt CONFIG REQUIRED)
 target_link_libraries(${PROJECT_NAME} PRIVATE fmt::fmt)
 
+# doctest
 find_package(doctest CONFIG REQUIRED)
 target_link_libraries(${PROJECT_NAME} PRIVATE doctest::doctest)
+
+# imgui
+find_package(imgui CONFIG REQUIRED)
+target_link_libraries(${PROJECT_NAME} 
+    PRIVATE 
+    imgui::imgui 
+    d3d11
+)
+
+#if (WIN32)
+#    set_target_properties(${PROJECT_NAME} PROPERTIES
+#        WIN32_EXECUTABLE TRUE
+#    )
+#endif()
+
 
 # Enable testing
 enable_testing()
