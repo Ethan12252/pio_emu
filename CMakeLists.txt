@@ -6,6 +6,7 @@ set(CMAKE_CXX_STANDARD 20)
 # Common source files
 set(COMMON_SOURCES
         src/PioStateMachine.cpp
+        src/PioVariableRegistry.cpp
         src/PioStateMachine.h
         src/TimingDiagram.cpp
         src/TimingDiagram.h

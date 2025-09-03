@@ -2,6 +2,8 @@
 #include <cstdint>
 #include <array>
 #include <vector>
+#include <map>
+#include <functional>
 #include "Logger/Logger.h"
 
 class PioStateMachine
@@ -97,10 +99,19 @@ public:
     // IRQs
     std::array<bool, 8> irq_flags;
     bool irq_is_waiting = false;
-    
-//#ifndef PIO_EMU_TEST_NAME
-//private:
-//#endif
+
+    // Reflection
+
+    // Variable access system
+    uint32_t get_var(const std::string& name) const;
+    void set_var(const std::string& name, uint32_t value);
+    std::vector<std::string> get_available_vars() const; 
+
+    //private:
+    void setup_var_access();
+    std::map<std::string, std::function<uint32_t()>> var_getters;
+    std::map<std::string, std::function<void(uint32_t)>> var_setters;
+
     void executeInstruction();
 
     // Instruction handlers

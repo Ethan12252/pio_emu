@@ -117,6 +117,9 @@ PioStateMachine::PioStateMachine()
     currentInstruction = 0xa042; //nop
     instructionMemory.fill(0xa042); //nop
     stateMachineNumber = 0;
+
+    // Reflaection
+    setup_var_access();
 }
 
 void PioStateMachine::doSideSet(uint16_t delay_side_set_field)
@@ -1075,3 +1078,4 @@ void PioStateMachine::executeSet()
         LOG_ERROR("'set' has unknown destination, continuing");
     }
 }
+
