@@ -297,8 +297,8 @@ TEST_CASE("executeOut() with autopull")
         pio.regs.x = 0;
         pio.settings.out_shift_right = true;
 
-        pio.tx_fifo[0] = 0x87654321;
-        pio.tx_fifo_count = 1;
+        pio.fifo.tx_fifo[0] = 0x87654321;
+        pio.fifo.tx_fifo_count = 1;
 
         // OUT X, 8 (shift count will be 16, below threshold)
         pio.currentInstruction = buildOutInstruction(OutDestination::X, 8);
@@ -308,7 +308,7 @@ TEST_CASE("executeOut() with autopull")
         CHECK(pio.regs.x == 0x12); // 8 lsb
         CHECK(pio.regs.osr_shift_count == 16); // 8+8
         CHECK(pio.regs.osr == 0x00ABCDEF);
-        CHECK(pio.tx_fifo_count == 1); // FIFO still contains the value
+        CHECK(pio.fifo.tx_fifo_count == 1); // FIFO still contains the value
     }
 
     SUBCASE("Autopull threshold exactly reached")
@@ -321,8 +321,8 @@ TEST_CASE("executeOut() with autopull")
         pio.settings.out_shift_right = true;
 
         // always pull from tx_fifo[0]
-        pio.tx_fifo[0] = 0x87654321;
-        pio.tx_fifo_count = 1;
+        pio.fifo.tx_fifo[0] = 0x87654321;
+        pio.fifo.tx_fifo_count = 1;
 
         // OUT X, 8 (shift count will exactly be 16)
         pio.currentInstruction = buildOutInstruction(OutDestination::X, 8);
@@ -332,7 +332,7 @@ TEST_CASE("executeOut() with autopull")
         CHECK(pio.regs.x == 0x78);
         CHECK(pio.regs.osr_shift_count == 0); // Reset to 0
         CHECK(pio.regs.osr == 0x87654321); // OSR with new value
-        CHECK(pio.tx_fifo_count == 0); // FIFO now empty
+        CHECK(pio.fifo.tx_fifo_count == 0); // FIFO now empty
     }
 
     SUBCASE("Autopull threshold exceeded")
@@ -344,9 +344,9 @@ TEST_CASE("executeOut() with autopull")
         pio.regs.x = 0;
         pio.settings.out_shift_right = true;
 
-        pio.tx_fifo[0] = 0xBBBBBBBB;
-        pio.tx_fifo[1] = 0xAAAAAAAA;
-        pio.tx_fifo_count = 2;
+        pio.fifo.tx_fifo[0] = 0xBBBBBBBB;
+        pio.fifo.tx_fifo[1] = 0xAAAAAAAA;
+        pio.fifo.tx_fifo_count = 2;
 
         // OUT X, 8 (shift count will exceed 12)
         pio.currentInstruction = buildOutInstruction(OutDestination::X, 8); // 8+8 > 12 -> autopush
@@ -356,8 +356,8 @@ TEST_CASE("executeOut() with autopull")
         CHECK(pio.regs.x == 0xAA);
         CHECK(pio.regs.osr_shift_count == 0);
         CHECK(pio.regs.osr == 0xBBBBBBBB);
-        CHECK(pio.tx_fifo[0] == 0xAAAAAAAA); // Also check if tx_fifo shifted
-        CHECK(pio.tx_fifo_count == 1);
+        CHECK(pio.fifo.tx_fifo[0] == 0xAAAAAAAA); // Also check if tx_fifo shifted
+        CHECK(pio.fifo.tx_fifo_count == 1);
     }
 
     SUBCASE("Autopull with empty TX FIFO")
@@ -369,7 +369,7 @@ TEST_CASE("executeOut() with autopull")
         pio.regs.osr_shift_count = 8;
         pio.regs.x = 0;
         pio.settings.out_shift_right = true;
-        pio.tx_fifo_count = 0; // Empty FIFO
+        pio.fifo.tx_fifo_count = 0; // Empty FIFO
 
         // OUT X, 8 (shift count reaches threshold but FIFO empty)
         pio.currentInstruction = buildOutInstruction(OutDestination::X, 8);
@@ -379,7 +379,7 @@ TEST_CASE("executeOut() with autopull")
         // Check stall
         CHECK(pio.regs.x == 0x78); // Value still output
         CHECK(pio.regs.osr_shift_count == 16); // Count still increase
-        CHECK(pio.pull_is_stalling == true);
+        CHECK(pio.fifo.pull_is_stalling == true);
     }
 }
 

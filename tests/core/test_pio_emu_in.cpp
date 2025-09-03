@@ -214,7 +214,7 @@ TEST_CASE("executeIn() test")
         pio.settings.push_threshold = 8;
         pio.settings.in_shift_right = false;
 
-        pio.rx_fifo_count = 0;
+        pio.fifo.rx_fifo_count = 0;
 
         pio.regs.isr = 0xAA;
         pio.regs.isr_shift_count = 7;
@@ -227,8 +227,8 @@ TEST_CASE("executeIn() test")
         pio.executeIn();
 
         // Should have pushed to RX FIFO and reset ISR
-        CHECK(pio.rx_fifo_count == 1);
-        CHECK(pio.rx_fifo[0] == 0x2AB); // 0xAA with 2 new bits = 0b0010'1010'1011
+        CHECK(pio.fifo.rx_fifo_count == 1);
+        CHECK(pio.fifo.rx_fifo[0] == 0x2AB); // 0xAA with 2 new bits = 0b0010'1010'1011
         CHECK(pio.regs.isr == 0); // ISR cleared after push
         CHECK(pio.regs.isr_shift_count == 0); // Shift count reset
     }
@@ -240,7 +240,7 @@ TEST_CASE("executeIn() test")
         pio.settings.autopush_enable = true;
         pio.settings.push_threshold = 8;
 
-        pio.rx_fifo_count = 0;
+        pio.fifo.rx_fifo_count = 0;
 
         // Set up ISR with empty state
         pio.regs.isr = 0;
@@ -252,8 +252,8 @@ TEST_CASE("executeIn() test")
         pio.executeIn();
 
         // Should have pushed to RX FIFO and reset ISR
-        CHECK(pio.rx_fifo_count == 1);
-        CHECK(pio.rx_fifo[0] == 0xAB);
+        CHECK(pio.fifo.rx_fifo_count == 1);
+        CHECK(pio.fifo.rx_fifo[0] == 0xAB);
         CHECK(pio.regs.isr == 0);
         CHECK(pio.regs.isr_shift_count == 0);
     }
@@ -358,10 +358,10 @@ TEST_CASE("executeIn() test")
         pio.settings.push_threshold = 8;
 
         // Fill the RX FIFO
-        pio.rx_fifo_count = 4;
+        pio.fifo.rx_fifo_count = 4;
         for (int i = 0; i < 4; i++)
         {
-            pio.rx_fifo[i] = 0xF0 + i;
+            pio.fifo.rx_fifo[i] = 0xF0 + i;
         }
 
         pio.regs.isr = 0xAA;
@@ -373,7 +373,7 @@ TEST_CASE("executeIn() test")
         pio.executeIn();
 
         // Should set the stalling flag when FIFO is full
-        CHECK(pio.push_is_stalling == true);
+        CHECK(pio.fifo.push_is_stalling == true);
 
         // The ISR should still be updated even if push is stalled
         CHECK(pio.regs.isr == 0xAAF); // Shifted old value + new 4 bits
@@ -411,7 +411,7 @@ TEST_CASE("executeIn() test")
         pio.settings.autopush_enable = true;
         pio.settings.push_threshold = 4;
 
-        pio.rx_fifo_count = 0;
+        pio.fifo.rx_fifo_count = 0;
 
         pio.regs.x = 0xF;
 
@@ -424,8 +424,8 @@ TEST_CASE("executeIn() test")
             pio.executeIn();
 
             // Each operation should trigger a push
-            CHECK(pio.rx_fifo_count == i + 1);
-            CHECK(pio.rx_fifo[i] == 0xF);
+            CHECK(pio.fifo.rx_fifo_count == i + 1);
+            CHECK(pio.fifo.rx_fifo[i] == 0xF);
             CHECK(pio.regs.isr == 0);
             CHECK(pio.regs.isr_shift_count == 0);
         }
@@ -438,7 +438,7 @@ TEST_CASE("executeIn() test")
         pio.settings.push_threshold = 8;
         pio.settings.in_shift_right = true;
 
-        pio.rx_fifo_count = 0;
+        pio.fifo.rx_fifo_count = 0;
 
         pio.regs.isr = 0;
         pio.regs.isr_shift_count = 0;
@@ -448,8 +448,8 @@ TEST_CASE("executeIn() test")
         pio.currentInstruction = buildInInstruction(PioSource::X, 8);
         pio.executeIn();
 
-        CHECK(pio.rx_fifo_count == 1);
-        CHECK(pio.rx_fifo[0] == (0xAB << 24)); // 0xAB000000
+        CHECK(pio.fifo.rx_fifo_count == 1);
+        CHECK(pio.fifo.rx_fifo[0] == (0xAB << 24)); // 0xAB000000
         CHECK(pio.regs.isr == 0);
         CHECK(pio.regs.isr_shift_count == 0);
     }

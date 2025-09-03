@@ -7,6 +7,9 @@
 class PioStateMachine
 {
 public:
+    PioStateMachine();
+    void tick(); // Forward a clock
+
     std::array<uint16_t, 32> instructionMemory;
     uint16_t currentInstruction;
     uint16_t stateMachineNumber;
@@ -40,7 +43,7 @@ public:
     {
         int  sideset_count = 0;  // bit count without opt bit
         bool sideset_opt = false;
-        bool sideset_to_pindirs = false; 
+        bool sideset_to_pindirs = false;
         int  sideset_base = -1;
         int  in_base = -1;
         int  out_base = -1;
@@ -73,29 +76,32 @@ public:
         std::array<int8_t, 32> sideset_data;
 
         // pindirs (0 for output, 1 for input)
-        std::array<int8_t, 32> pindirs;  
+        std::array<int8_t, 32> pindirs;
         std::array<int8_t, 32> set_pindirs;
         std::array<int8_t, 32> out_pindirs;
         std::array<int8_t, 32> sideset_pindirs;
     } gpio;
 
     // FIFOs
+    struct Fifo {
+        std::array<uint32_t, 8> tx_fifo = { 0 }; // TODO: We didn't handle fifo joint
+        std::array<uint32_t, 8> rx_fifo = { 0 };
+        int tx_fifo_count = 0;  // 0 is empty
+        int rx_fifo_count = 0;
+        bool push_is_stalling = false; // TODO: use of these variable need check
+        bool pull_is_stalling = false;
+    } fifo;
     void push_to_rx_fifo();
     void pull_from_tx_fifo();
-    std::array<uint32_t, 8> tx_fifo = { 0 }; // TODO: We didn't handle fifo joint
-    std::array<uint32_t, 8> rx_fifo = { 0 };
-    int tx_fifo_count = 0;  // 0 is empty
-    int rx_fifo_count = 0;
-    bool push_is_stalling = false; // TODO: use of these variable need check
-    bool pull_is_stalling = false;
 
     // IRQs
     std::array<bool, 8> irq_flags;
     bool irq_is_waiting = false;
-
+    
+//#ifndef PIO_EMU_TEST_NAME
+//private:
+//#endif
     void executeInstruction();
-    void tick(); // Forward a clock
-    PioStateMachine();
 
     // Instruction handlers
     void executeJmp();
@@ -110,6 +116,4 @@ public:
 
     void doSideSet(uint16_t delay_side_set_field);
     void setAllGpio();
-
-private:
 };

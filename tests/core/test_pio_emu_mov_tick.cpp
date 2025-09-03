@@ -167,7 +167,7 @@ TEST_CASE("MOV: X <- STATUS (all-ones)")
     pio.regs.x = 0;
     pio.settings.status_sel = 1; // STATUS source txfifo
     pio.settings.fifo_level_N = 4;
-    pio.tx_fifo_count = 4; // full
+    pio.fifo.tx_fifo_count = 4; // full
     pio.instructionMemory[0] = 0xa042; // nop 
     pio.instructionMemory[1] = buildMovInstruction(MovDestination::X, MovOperation::NONE, MovSource::STATUS);
     pio.tick();

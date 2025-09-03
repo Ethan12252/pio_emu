@@ -1,10 +1,4 @@
-// Dear ImGui: standalone example application for DirectX 11 integrated with PIO Emulator
-
-// Learn about Dear ImGui:
-// - FAQ                  https://dearimgui.com/faq
-// - Getting Started      https://dearimgui.com/getting-started
-// - Documentation        https://dearimgui.com/docs (same as your local docs/ folder).
-// - Introduction, links and more at the top of imgui.cpp
+// Dear ImGui: standalone example application for DirectX 11 integrated with my PIO Emulator
 
 #include "imgui.h"
 #include "imgui_impl_win32.h"
@@ -96,8 +90,8 @@ int main(int, char**)
     pio.gpio.pindirs[22] = 0;  // Output
 
     // Data
-    pio.tx_fifo[0] = 0xba'ab'ff'00;
-    pio.tx_fifo_count = 1;
+    pio.fifo.tx_fifo[0] = 0xba'ab'ff'00;
+    pio.fifo.tx_fifo_count = 1;
 
     // GUI state
     bool show_main_window = true;
@@ -152,7 +146,7 @@ int main(int, char**)
                     if (ImGui::Button("Tick")) {
                         pio.tick();
                     }
-                    ImGui::SameLine();
+
                     ImGui::InputInt("Steps", &tick_steps, 1, 100);
                     ImGui::SameLine();
                     if (ImGui::Button("Tick Multiple")) {
@@ -175,8 +169,8 @@ int main(int, char**)
                         pio.settings.warp_start = 0;
                         pio.settings.warp_end = 3;
                         pio.gpio.pindirs[22] = 0;
-                        pio.tx_fifo[0] = 0xba'ab'ff'00;
-                        pio.tx_fifo_count = 1;
+                        pio.fifo.tx_fifo[0] = 0xba'ab'ff'00;
+                        pio.fifo.tx_fifo_count = 1;
                     }
                     ImGui::EndTabItem();
                 }
@@ -481,37 +475,37 @@ int main(int, char**)
                         ImGui::TableSetColumnIndex(0);
                         ImGui::Text("TX FIFO Count");
                         ImGui::TableSetColumnIndex(1);
-                        ImGui::Text("%d", pio.tx_fifo_count);
+                        ImGui::Text("%d", pio.fifo.tx_fifo_count);
 
                         ImGui::TableNextRow();
                         ImGui::TableSetColumnIndex(0);
                         ImGui::Text("RX FIFO Count");
                         ImGui::TableSetColumnIndex(1);
-                        ImGui::Text("%d", pio.rx_fifo_count);
+                        ImGui::Text("%d", pio.fifo.rx_fifo_count);
 
                         ImGui::TableNextRow();
                         ImGui::TableSetColumnIndex(0);
                         ImGui::Text("Push Stalling");
                         ImGui::TableSetColumnIndex(1);
-                        ImGui::Text("%s", pio.push_is_stalling ? "true" : "false");
+                        ImGui::Text("%s", pio.fifo.push_is_stalling ? "true" : "false");
 
                         ImGui::TableNextRow();
                         ImGui::TableSetColumnIndex(0);
                         ImGui::Text("Pull Stalling");
                         ImGui::TableSetColumnIndex(1);
-                        ImGui::Text("%s", pio.pull_is_stalling ? "true" : "false");
+                        ImGui::Text("%s", pio.fifo.pull_is_stalling ? "true" : "false");
 
                         ImGui::TableNextRow();
                         ImGui::TableSetColumnIndex(0);
                         ImGui::Text("TX FIFO[0]");
                         ImGui::TableSetColumnIndex(1);
-                        ImGui::Text("0x%08x", pio.tx_fifo[0]);
+                        ImGui::Text("0x%08x", pio.fifo.tx_fifo[0]);
 
                         ImGui::TableNextRow();
                         ImGui::TableSetColumnIndex(0);
                         ImGui::Text("RX FIFO[0]");
                         ImGui::TableSetColumnIndex(1);
-                        ImGui::Text("0x%08x", pio.rx_fifo[0]);
+                        ImGui::Text("0x%08x", pio.fifo.rx_fifo[0]);
 
                         // Add more FIFO entries if needed
 

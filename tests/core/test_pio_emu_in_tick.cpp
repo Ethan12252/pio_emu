@@ -196,7 +196,7 @@ TEST_CASE("PIO IN instruction via tick()")
         pio.settings.push_threshold = 8;
         pio.settings.in_shift_right = false;
 
-        pio.rx_fifo_count = 0;
+        pio.fifo.rx_fifo_count = 0;
         pio.regs.isr = 0xAA;
         pio.regs.isr_shift_count = 7;
 
@@ -207,8 +207,8 @@ TEST_CASE("PIO IN instruction via tick()")
         pio.regs.pc = 0;
         pio.tick();
 
-        CHECK(pio.rx_fifo_count == 1);
-        CHECK(pio.rx_fifo[0] == 0x2AB);
+        CHECK(pio.fifo.rx_fifo_count == 1);
+        CHECK(pio.fifo.rx_fifo[0] == 0x2AB);
         CHECK(pio.regs.isr == 0);
         CHECK(pio.regs.isr_shift_count == 0);
     }
@@ -218,7 +218,7 @@ TEST_CASE("PIO IN instruction via tick()")
         pio.settings.in_shift_autopush = true;
         pio.settings.autopush_enable = true;
         pio.settings.push_threshold = 8;
-        pio.rx_fifo_count = 0;
+        pio.fifo.rx_fifo_count = 0;
         pio.regs.isr = 0;
         pio.regs.isr_shift_count = 0;
         pio.regs.x = 0xAB;
@@ -227,8 +227,8 @@ TEST_CASE("PIO IN instruction via tick()")
         pio.regs.pc = 0;
         pio.tick();
 
-        CHECK(pio.rx_fifo_count == 1);
-        CHECK(pio.rx_fifo[0] == 0xAB);
+        CHECK(pio.fifo.rx_fifo_count == 1);
+        CHECK(pio.fifo.rx_fifo[0] == 0xAB);
         CHECK(pio.regs.isr == 0);
         CHECK(pio.regs.isr_shift_count == 0);
     }
@@ -317,9 +317,9 @@ TEST_CASE("PIO IN instruction via tick()")
         pio.settings.autopush_enable = true;
         pio.settings.push_threshold = 8;
 
-        pio.rx_fifo_count = 4;
+        pio.fifo.rx_fifo_count = 4;
         for (int i = 0; i < 4; i++)
-            pio.rx_fifo[i] = 0xF0 + i;
+            pio.fifo.rx_fifo[i] = 0xF0 + i;
 
         pio.regs.isr = 0xAA;
         pio.regs.isr_shift_count = 4;
@@ -328,7 +328,7 @@ TEST_CASE("PIO IN instruction via tick()")
         pio.regs.pc = 0;
         pio.tick();
 
-        CHECK(pio.push_is_stalling == true);
+        CHECK(pio.fifo.push_is_stalling == true);
         CHECK(pio.regs.isr == 0xAAF);
         CHECK(pio.regs.isr_shift_count == 8);
     }
@@ -356,7 +356,7 @@ TEST_CASE("PIO IN instruction via tick()")
         pio.settings.in_shift_autopush = true;
         pio.settings.autopush_enable = true;
         pio.settings.push_threshold = 4;
-        pio.rx_fifo_count = 0;
+        pio.fifo.rx_fifo_count = 0;
         pio.regs.x = 0xF;
 
         for (int i = 0; i < 3; i++)
@@ -367,8 +367,8 @@ TEST_CASE("PIO IN instruction via tick()")
             pio.regs.pc = i;
             pio.tick();
 
-            CHECK(pio.rx_fifo_count == i + 1);
-            CHECK(pio.rx_fifo[i] == 0xF);
+            CHECK(pio.fifo.rx_fifo_count == i + 1);
+            CHECK(pio.fifo.rx_fifo[i] == 0xF);
             CHECK(pio.regs.isr == 0);
             CHECK(pio.regs.isr_shift_count == 0);
         }
@@ -380,7 +380,7 @@ TEST_CASE("PIO IN instruction via tick()")
         pio.settings.autopush_enable = true;
         pio.settings.push_threshold = 8;
         pio.settings.in_shift_right = true;
-        pio.rx_fifo_count = 0;
+        pio.fifo.rx_fifo_count = 0;
         pio.regs.isr = 0;
         pio.regs.isr_shift_count = 0;
         pio.regs.x = 0xAB;
@@ -389,8 +389,8 @@ TEST_CASE("PIO IN instruction via tick()")
         pio.regs.pc = 0;
         pio.tick();
 
-        CHECK(pio.rx_fifo_count == 1);
-        CHECK(pio.rx_fifo[0] == (0xAB << 24)); // 0xAB000000
+        CHECK(pio.fifo.rx_fifo_count == 1);
+        CHECK(pio.fifo.rx_fifo[0] == (0xAB << 24)); // 0xAB000000
         CHECK(pio.regs.isr == 0);
         CHECK(pio.regs.isr_shift_count == 0);
     }

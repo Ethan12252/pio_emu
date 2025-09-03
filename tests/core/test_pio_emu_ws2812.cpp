@@ -63,8 +63,8 @@ TEST_CASE("JMP Always")
 
     // data
     uint32_t grbdata = 0xba'ab'ff'00;  // g:10111010 r:10101011 b:11111111 00000000 
-    pio.tx_fifo[0] = grbdata;
-    pio.tx_fifo_count++;
+    pio.fifo.tx_fifo[0] = grbdata;
+    pio.fifo.tx_fifo_count++;
 
     // tick
     pio.tick(); pio.tick(); pio.tick(); pio.tick(); pio.tick();
