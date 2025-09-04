@@ -89,7 +89,7 @@ void PioStateMachine::set_var(const std::string& name, uint32_t value) {
     }
 }
 
-//std::vector<std::string> PioStateMachine::get_available_vars() const
+//std::vector<std::string> PioStateMachine::get_available_set_vars() const
 //{
 //    std::vector<std::string> keys;
 //    keys.reserve(myMap.size());  // Preallocate memory

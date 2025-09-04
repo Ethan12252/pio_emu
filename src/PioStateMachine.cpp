@@ -1,7 +1,91 @@
 #include "PioStateMachine.h"
+#include "iniparse.h"
 
 using u16 = uint16_t;
 using u32 = uint32_t;
+
+PioStateMachine::PioStateMachine()
+{
+    // Initilze
+    setDefault();
+
+    // TODO: Parse the settings and instruction text from inifile
+    
+
+    // Reflaection
+    setup_var_access();
+}
+
+void PioStateMachine::setDefault()
+{
+    gpio.raw_data.fill(0); // TODO: check if we want 0 or -1
+    gpio.set_data.fill(-1);
+    gpio.out_data.fill(-1);
+    gpio.external_data.fill(-1);
+    gpio.sideset_data.fill(-1);
+
+    gpio.pindirs.fill(-1);
+    gpio.set_pindirs.fill(-1);
+    gpio.out_pindirs.fill(-1);
+    gpio.sideset_pindirs.fill(-1);
+
+    irq_flags.fill(false);
+
+    currentInstruction = 0xa042; // nop
+    instructionMemory.fill(0xa042); // nop
+    stateMachineNumber = 0;
+
+    // initialized in headder 
+    jmp_to = -1;
+    skip_increase_pc = false;
+    delay_delay = false;
+    skip_delay = false;
+    exec_command = false;
+    clock = 0;
+    wait_is_stalling = false;
+
+    regs.x = 0;
+    regs.y = 0;
+    regs.isr = 0;
+    regs.osr = 0;
+    regs.isr_shift_count = 0;
+    regs.osr_shift_count = 32;
+    regs.pc = 0;
+    regs.delay = 0;
+    regs.status = 0;
+
+    settings.sideset_count = 0;
+    settings.sideset_opt = false;
+    settings.sideset_to_pindirs = false;
+    settings.sideset_base = -1;
+    settings.in_base = -1;
+    settings.out_base = -1;
+    settings.set_base = -1;
+    settings.jmp_pin = -1;
+    settings.set_count = -1;
+    settings.out_count = -1;
+    settings.push_threshold = 32;
+    settings.pull_threshold = 32;
+    settings.fifo_level_N = -1;
+    settings.warp_start = 0;
+    settings.warp_end = 31;
+    settings.in_shift_right = false;
+    settings.out_shift_right = false;
+    settings.in_shift_autopush = false;
+    settings.out_shift_autopull = false;
+    settings.autopull_enable = false;
+    settings.autopush_enable = false;
+    settings.status_sel = false;
+
+    fifo.tx_fifo = { 0 };
+    fifo.rx_fifo = { 0 };
+    fifo.tx_fifo_count = 0;
+    fifo.rx_fifo_count = 0;
+    fifo.push_is_stalling = false;
+    fifo.pull_is_stalling = false;
+
+    irq_is_waiting = false;
+}
 
 void PioStateMachine::push_to_rx_fifo()
 {
@@ -97,29 +181,6 @@ void PioStateMachine::tick()
     /* Update gpio */
     setAllGpio();
     clock++;
-}
-
-PioStateMachine::PioStateMachine()
-{
-    gpio.raw_data.fill(0); // TODO: check if we want 0 or -1
-    gpio.set_data.fill(-1);
-    gpio.out_data.fill(-1);
-    gpio.external_data.fill(-1);
-    gpio.sideset_data.fill(-1);
-
-    gpio.pindirs.fill(-1);
-    gpio.set_pindirs.fill(-1);
-    gpio.out_pindirs.fill(-1);
-    gpio.sideset_pindirs.fill(-1);
-
-    irq_flags.fill(false);
-
-    currentInstruction = 0xa042; //nop
-    instructionMemory.fill(0xa042); //nop
-    stateMachineNumber = 0;
-
-    // Reflaection
-    setup_var_access();
 }
 
 void PioStateMachine::doSideSet(uint16_t delay_side_set_field)
@@ -406,7 +467,7 @@ void PioStateMachine::executeWait()
             condIsNotMet = true;
         else
             condIsNotMet = false;
-            
+
         break;
     case 0b10: // IRQ: wait for PIO IRQ flag selected by Index (見3.4.9.2)  TODO: Need check!(irq number calculation)
     {
@@ -431,7 +492,7 @@ void PioStateMachine::executeWait()
         else
             condIsNotMet = false;
 
-            
+
         break;
     }
     case 0b11: // Reserved
@@ -597,7 +658,7 @@ void PioStateMachine::executeOut()
             fifo.pull_is_stalling = false;
         }
     }
-    
+
 
     // Get data out of osr
     u32 data = 0;
@@ -611,7 +672,7 @@ void PioStateMachine::executeOut()
         bitCount = first_shifted;
         mask = (1 << first_shifted) - 1; // can't shift out all the bits in this cycle, shift till pull_thres
         //if(!(regs.osr_shift_count + bitCount) == settings.pull_threshold)
-            out_not_finished = true;
+        out_not_finished = true;
     }
     else if (out_not_finished == true)
     {
@@ -751,7 +812,7 @@ void PioStateMachine::executeOut()
             fifo.pull_is_stalling = false;
         }
     }
-    
+
 }
 
 

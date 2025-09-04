@@ -3,10 +3,37 @@
 #include <cassert>
 #include "PioStateMachine.h"
 
+inline void varialbeAccessTest(PioStateMachine& pio)
+{
+    fmt::println("before: {}", pio.get_var("pc"));
+    pio.set_var("pc", 69);
+    fmt::println("after: {}", pio.get_var("pc"));
+
+    fmt::println("before: {}", static_cast<int8_t>(pio.get_var("gpio22")));
+    pio.set_var("gpio22", 1);
+    fmt::println("after: {}", static_cast<int8_t>(pio.get_var("gpio22")));
+    pio.set_var("gpio22", 0);
+    fmt::println("after: {}", static_cast<int8_t>(pio.get_var("gpio22")));
+
+    fmt::println("before: {}", (int8_t)pio.get_var("tx_fifo0"));
+    pio.set_var("tx_fifo0", 1);
+    fmt::println("after: {}", pio.get_var("tx_fifo0"));
+    pio.set_var("tx_fifo0", 0);
+    fmt::println("after: {}", pio.get_var("tx_fifo0"));
+
+    fmt::println("before: {}", static_cast<bool>(pio.get_var("irq1")));
+    pio.set_var("irq1", true);
+    fmt::println("after: {}", static_cast<bool>(pio.get_var("irq1")));
+    pio.set_var("irq1", false);
+    fmt::println("after: {}", static_cast<bool>(pio.get_var("irq1")));
+
+    pio.set_var("pc", 0);
+    pio.run_until_var("pc", 3);
+    fmt::println("pc: {} clock: {}", pio.regs.pc, pio.clock);
+}
+
 inline void ws2812_test(PioStateMachine& pio)
 {
-    
-
     static const uint16_t ws2812_program_instructions[] = {
         //     .wrap_target
         0x6321, //  0: out    x, 1    side 0 [3] ; Side-set still takes place when instruction stalls
@@ -57,30 +84,6 @@ inline void ws2812_test(PioStateMachine& pio)
 int main()
 {
     PioStateMachine pio;
-    fmt::println("before: {}", pio.get_var("pc"));
-    pio.set_var("pc", 69);
-    fmt::println("after: {}", pio.get_var("pc"));
-
-    fmt::println("before: {}", static_cast<int8_t>(pio.get_var("gpio22")));
-    pio.set_var("gpio22", 1 );
-    fmt::println("after: {}", static_cast<int8_t>(pio.get_var("gpio22")));
-    pio.set_var("gpio22", 0);
-    fmt::println("after: {}", static_cast<int8_t>(pio.get_var("gpio22")));
-
-    fmt::println("before: {}", (int8_t)pio.get_var("tx_fifo0"));
-    pio.set_var("tx_fifo0", 1);
-    fmt::println("after: {}", pio.get_var("tx_fifo0"));
-    pio.set_var("tx_fifo0", 0);
-    fmt::println("after: {}", pio.get_var("tx_fifo0"));
-
-    fmt::println("before: {}", static_cast<bool>(pio.get_var("irq1")));
-    pio.set_var("irq1", true);
-    fmt::println("after: {}", static_cast<bool>(pio.get_var("irq1")));
-    pio.set_var("irq1", false);
-    fmt::println("after: {}", static_cast<bool>(pio.get_var("irq1")));
-
-    pio.set_var("pc", 0);
-    pio.run_until_var("pc", 3);
-    fmt::println("pc: {} clock: {}", pio.regs.pc, pio.clock);
+    ws2812_test(pio);
     return 0;
 }

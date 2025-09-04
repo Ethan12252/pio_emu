@@ -6,6 +6,32 @@
 #include <functional>
 #include "Logger/Logger.h"
 
+struct pioStateMachineSettings
+{
+    int  sideset_count = 0;  // bit count without opt bit
+    bool sideset_opt = false;
+    bool sideset_to_pindirs = false;
+    int  sideset_base = -1;
+    int  in_base = -1;
+    int  out_base = -1;
+    int  set_base = -1;
+    int  jmp_pin = -1;
+    int  set_count = -1;
+    int  out_count = -1;
+    uint32_t  push_threshold = 32;
+    uint32_t  pull_threshold = 32;
+    int  fifo_level_N = -1;
+    uint32_t  warp_start = 0;
+    uint32_t  warp_end = 31;
+    bool in_shift_right = false;
+    bool out_shift_right = false;  // default is shift left
+    bool in_shift_autopush = false;
+    bool out_shift_autopull = false;
+    bool autopull_enable = false;
+    bool autopush_enable = false;
+    bool status_sel = false;  // 0 for txfifo, 1 for rxfifo
+};
+
 class PioStateMachine
 {
 public:
@@ -41,31 +67,7 @@ public:
     } regs;
 
     // Configuration settings
-    struct Settings
-    {
-        int  sideset_count = 0;  // bit count without opt bit
-        bool sideset_opt = false;
-        bool sideset_to_pindirs = false;
-        int  sideset_base = -1;
-        int  in_base = -1;
-        int  out_base = -1;
-        int  set_base = -1;
-        int  jmp_pin = -1;
-        int  set_count = -1;
-        int  out_count = -1;
-        uint32_t  push_threshold = 32;
-        uint32_t  pull_threshold = 32;
-        int  fifo_level_N = -1;
-        uint32_t  warp_start = 0;
-        uint32_t  warp_end = 31;
-        bool in_shift_right = false;
-        bool out_shift_right = false;  // default is shift left
-        bool in_shift_autopush = false;
-        bool out_shift_autopull = false;
-        bool autopull_enable = false;
-        bool autopush_enable = false;
-        bool status_sel = false;  // 0 for txfifo, 1 for rxfifo
-    } settings;
+    pioStateMachineSettings settings;
 
     // GPIO regs (見s3.4.5)
     struct GPIORegs
@@ -129,4 +131,8 @@ public:
 
     void doSideSet(uint16_t delay_side_set_field);
     void setAllGpio();
+
+    void setDefault();
 };
+
+

@@ -10,6 +10,7 @@ set(COMMON_SOURCES
         src/PioStateMachine.h
         src/logger/Logger.cpp
         src/logger/Logger.h
+        src/iniparse.h
 )
 
 # Main executable src/main.cpp
