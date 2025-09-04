@@ -12,7 +12,6 @@ public:
     int tick_steps = 1;  // For multi-tick
 
     int programSize;
-
     
     void initialize();
     void reset();
