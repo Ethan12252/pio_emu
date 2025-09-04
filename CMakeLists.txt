@@ -8,33 +8,37 @@ set(COMMON_SOURCES
         src/PioStateMachine.cpp
         src/PioVariableRegistry.cpp
         src/PioStateMachine.h
-        src/TimingDiagram.cpp
-        src/TimingDiagram.h
         src/logger/Logger.cpp
         src/logger/Logger.h
 )
 
 # Main executable src/main.cpp
-add_executable(pio_emu
+add_executable(pio_emu_gui
         src/gui/imgui_test.cpp
         ${COMMON_SOURCES}
 )
 
+add_executable(pio_emu_cli
+        src/main.cpp
+        ${COMMON_SOURCES}
+)
+
 # Find required packages
-# fmt
 find_package(fmt CONFIG REQUIRED)
-target_link_libraries(${PROJECT_NAME} PRIVATE fmt::fmt)
-
-# doctest
 find_package(doctest CONFIG REQUIRED)
-target_link_libraries(${PROJECT_NAME} PRIVATE doctest::doctest)
-
-# imgui
 find_package(imgui CONFIG REQUIRED)
-target_link_libraries(${PROJECT_NAME} 
-    PRIVATE 
+
+# pio_emu_cli
+target_link_libraries(${PROJECT_NAME}_cli PRIVATE 
+    fmt::fmt 
+    doctest::doctest
+)
+
+# pio_emu_gui
+target_link_libraries(${PROJECT_NAME}_gui PRIVATE 
     imgui::imgui 
     d3d11
+    fmt::fmt
 )
 
 #if (WIN32)

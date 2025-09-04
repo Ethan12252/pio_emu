@@ -1,12 +1,11 @@
 #include <fmt/format.h>
 #include <cstdint>
 #include <cassert>
-//#include "TimingDiagram.h"
 #include "PioStateMachine.h"
 
-int main() {
+inline void ws2812_test(PioStateMachine& pio)
+{
     
-    PioStateMachine pio;
 
     static const uint16_t ws2812_program_instructions[] = {
         //     .wrap_target
@@ -34,15 +33,15 @@ int main() {
     pio.gpio.pindirs[22] = 0;   // pin22 pindir to output
 
     // data
-    pio.tx_fifo[0] = 0xba'ab'ff'00;
-    pio.tx_fifo[1] = 0xff'12'ff'00;
-    pio.tx_fifo_count = 2;
+    pio.fifo.tx_fifo[0] = 0xba'ab'ff'00;
+    pio.fifo.tx_fifo[1] = 0xff'12'ff'00;
+    pio.fifo.tx_fifo_count = 2;
 
     for (size_t i = 0; i < 24; i++)
-        fmt::print("{:<2}: {:#010x}\n\n", i, pio.tx_fifo[0] << i);
+        fmt::print("{:<2}: {:#010x}\n\n", i, pio.fifo.tx_fifo[0] << i);
 
     // tick
-    for (int i = 0; i < 245 * 2; ++i) 
+    for (int i = 0; i < 245 * 2; ++i)
     {
         pio.tick(); // Update the emulator
         //fmt::print("{}", pio.gpio.raw_data[22] ? '-' : '_');
@@ -53,5 +52,35 @@ int main() {
             fmt::print("data: {:<2}\n", ist++);
         }
     }
+}
 
-    return 0;}
+int main()
+{
+    PioStateMachine pio;
+    fmt::println("before: {}", pio.get_var("pc"));
+    pio.set_var("pc", 69);
+    fmt::println("after: {}", pio.get_var("pc"));
+
+    fmt::println("before: {}", static_cast<int8_t>(pio.get_var("gpio22")));
+    pio.set_var("gpio22", 1 );
+    fmt::println("after: {}", static_cast<int8_t>(pio.get_var("gpio22")));
+    pio.set_var("gpio22", 0);
+    fmt::println("after: {}", static_cast<int8_t>(pio.get_var("gpio22")));
+
+    fmt::println("before: {}", (int8_t)pio.get_var("tx_fifo0"));
+    pio.set_var("tx_fifo0", 1);
+    fmt::println("after: {}", pio.get_var("tx_fifo0"));
+    pio.set_var("tx_fifo0", 0);
+    fmt::println("after: {}", pio.get_var("tx_fifo0"));
+
+    fmt::println("before: {}", static_cast<bool>(pio.get_var("irq1")));
+    pio.set_var("irq1", true);
+    fmt::println("after: {}", static_cast<bool>(pio.get_var("irq1")));
+    pio.set_var("irq1", false);
+    fmt::println("after: {}", static_cast<bool>(pio.get_var("irq1")));
+
+    pio.set_var("pc", 0);
+    pio.run_until_var("pc", 3);
+    fmt::println("pc: {} clock: {}", pio.regs.pc, pio.clock);
+    return 0;
+}

@@ -53,11 +53,11 @@ public:
         int  jmp_pin = -1;
         int  set_count = -1;
         int  out_count = -1;
-        int  push_threshold = 32;
-        int  pull_threshold = 32;
+        uint32_t  push_threshold = 32;
+        uint32_t  pull_threshold = 32;
         int  fifo_level_N = -1;
-        int  warp_start = 0;
-        int  warp_end = 31;
+        uint32_t  warp_start = 0;
+        uint32_t  warp_end = 31;
         bool in_shift_right = false;
         bool out_shift_right = false;  // default is shift left
         bool in_shift_autopush = false;
@@ -88,8 +88,8 @@ public:
     struct Fifo {
         std::array<uint32_t, 8> tx_fifo = { 0 }; // TODO: We didn't handle fifo joint
         std::array<uint32_t, 8> rx_fifo = { 0 };
-        int tx_fifo_count = 0;  // 0 is empty
-        int rx_fifo_count = 0;
+        uint8_t tx_fifo_count = 0;  // 0 is empty
+        uint8_t rx_fifo_count = 0;
         bool push_is_stalling = false; // TODO: use of these variable need check
         bool pull_is_stalling = false;
     } fifo;
@@ -101,16 +101,18 @@ public:
     bool irq_is_waiting = false;
 
     // Reflection
-
     // Variable access system
     uint32_t get_var(const std::string& name) const;
     void set_var(const std::string& name, uint32_t value);
-    std::vector<std::string> get_available_vars() const; 
+    //std::vector<std::string> get_available_vars() const; 
+
+    // runtime helper
+    bool run_until_var(const std::string& var_name, uint32_t target, int max_cycles = 10000);
 
     //private:
     void setup_var_access();
-    std::map<std::string, std::function<uint32_t()>> var_getters;
-    std::map<std::string, std::function<void(uint32_t)>> var_setters;
+    std::unordered_map <std::string, std::function<uint32_t()>> var_getters;
+    std::unordered_map <std::string, std::function<void(uint32_t)>> var_setters;
 
     void executeInstruction();
 

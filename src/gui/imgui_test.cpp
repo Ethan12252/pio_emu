@@ -5,7 +5,7 @@
 #include "imgui_impl_dx11.h"
 #include <d3d11.h>
 #include <tchar.h>
-#include "../PioStateMachine.h"  // Your PIO emulator header
+#include "../PioStateMachine.h"  
 
 // Data
 static ID3D11Device* g_pd3dDevice = nullptr;
@@ -77,7 +77,7 @@ int main(int, char**)
     for (size_t i = 0; i < sizeof(ws2812_program_instructions) / sizeof(uint16_t); i++)
         pio.instructionMemory[i] = ws2812_program_instructions[i];
 
-    // Settings as in example
+    // Settings as in ws2812 example
     pio.settings.sideset_opt = false;
     pio.settings.sideset_count = 1;
     pio.settings.sideset_base = 22;
