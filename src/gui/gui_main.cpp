@@ -74,7 +74,7 @@ int main(int, char**)
     pioApp.initialize();
 
     // Main loop
-    while (!done)
+    while (!done && !pioApp.shouldExit())
     {
         // Poll and handle messages
         MSG msg;
@@ -110,7 +110,7 @@ int main(int, char**)
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
 
-        pioApp.renderUI();  // This replaces all your UI code
+        pioApp.renderUI();
 
         // Rendering
         ImGui::Render();
@@ -121,7 +121,7 @@ int main(int, char**)
         ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 
         // Present
-        HRESULT hr = g_pSwapChain->Present(1, 0);  // With vsync
+        HRESULT hr = g_pSwapChain->Present(1, 0); // With vsync
         g_SwapChainOccluded = (hr == DXGI_STATUS_OCCLUDED);
     }
 

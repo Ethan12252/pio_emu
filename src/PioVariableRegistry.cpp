@@ -12,6 +12,11 @@ void PioStateMachine::setup_var_access()
     REGISTER_VAR("x", regs.x);
     REGISTER_VAR("y", regs.y);
     REGISTER_VAR("delay", regs.delay);
+    REGISTER_VAR("isr", regs.isr);
+    REGISTER_VAR("osr", regs.osr);
+    REGISTER_VAR("isr_shift_count", regs.isr_shift_count);
+    REGISTER_VAR("osr_shift_count", regs.osr_shift_count);
+
     REGISTER_VAR("irq_is_waiting", irq_is_waiting);
     REGISTER_VAR("pull_is_stalling", fifo.pull_is_stalling);
     REGISTER_VAR("push_is_stalling", fifo.push_is_stalling);
@@ -104,7 +109,8 @@ bool PioStateMachine::run_until_var(const std::string& var_name, uint32_t target
     {
         if (get_var(var_name) == target)
             return true;
-        tick();
+        else
+            tick();
     }
     return false;
 }

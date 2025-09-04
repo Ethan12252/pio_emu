@@ -106,7 +106,6 @@ public:
     // Variable access system
     uint32_t get_var(const std::string& name) const;
     void set_var(const std::string& name, uint32_t value);
-    //std::vector<std::string> get_available_vars() const; 
 
     // runtime helper
     bool run_until_var(const std::string& var_name, uint32_t target, int max_cycles = 10000);

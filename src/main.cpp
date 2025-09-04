@@ -84,6 +84,7 @@ inline void ws2812_test(PioStateMachine& pio)
 int main()
 {
     PioStateMachine pio;
-    ws2812_test(pio);
+    //ws2812_test(pio);
+    varialbeAccessTest(pio);
     return 0;
 }
