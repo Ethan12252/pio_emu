@@ -16,6 +16,8 @@ set(COMMON_SOURCES
 # Main executable src/main.cpp
 add_executable(pio_emu_gui
         src/gui/imgui_test.cpp
+        src/gui/PioStateMachineApp.cpp
+        src/gui/PioStateMachineApp.h
         ${COMMON_SOURCES}
 )
 
