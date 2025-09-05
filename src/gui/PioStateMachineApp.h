@@ -1,10 +1,12 @@
 #pragma once
 #include "../PioStateMachine.h"
 #include "imgui.h"
+#include <string>
 
 class PioStateMachineApp {
 private:
     PioStateMachine pio;
+    std::string ini_filepath;
     bool show_control_window = true;
     bool show_variable_window = true;
     bool show_program_window = true;
@@ -12,7 +14,6 @@ private:
     bool show_settings_window = true;
     bool done = false;
     int tick_steps = 1;
-    int program_size = 0;
 
     // UI rendering methods for each window
     void renderControlWindow();
@@ -22,6 +23,7 @@ private:
     void renderSettingsWindow();
 
 public:
+    PioStateMachineApp(const std::string& filepath = "") : ini_filepath(filepath) {}
     void initialize();
     void reset();
     void renderUI();

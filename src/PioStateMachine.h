@@ -36,7 +36,7 @@ class PioStateMachine
 {
 public:
     PioStateMachine();
-    PioStateMachine(const std::string& filepath);
+    PioStateMachine(const std::string& filepath); // loads the settings and instruction from .ini
     void tick(); // Forward a clock
 
     std::array<uint16_t, 32> instructionMemory;

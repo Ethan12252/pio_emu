@@ -1,37 +1,14 @@
 #include "PioStateMachineApp.h"
 
 void PioStateMachineApp::initialize() {
-    // Reset the emulator to a clean state
-    pio = PioStateMachine();
-
-    // Load WS2812 program
-    static const uint16_t ws2812_program_instructions[] = {
-        0x6321, // out x, 1 side 0 [3]
-        0x1223, // jmp !x, 3 side 1 [2]
-        0x1200, // jmp 0 side 1 [2]
-        0xa242, // nop side 0 [2]
-    };
-
-    program_size = sizeof(ws2812_program_instructions) / sizeof(uint16_t);
-    for (int i = 0; i < program_size; ++i) {
-        pio.instructionMemory[i] = ws2812_program_instructions[i];
+    // Initialize with .ini file if provided, otherwise default
+    if (!ini_filepath.empty()) {
+        pio = PioStateMachine(ini_filepath);
     }
-
-    // Configure settings for WS2812
-    pio.settings.sideset_opt = false;
-    pio.settings.sideset_count = 1;
-    pio.settings.sideset_base = 22;
-    pio.settings.pull_threshold = 24;
-    pio.settings.out_shift_right = false;
-    pio.settings.autopull_enable = true;
-    pio.settings.wrap_start = 0;
-    pio.settings.wrap_end = 3;
-
-    pio.gpio.pindirs[22] = 0; // Output
-
-    // Initialize FIFO data
-    pio.fifo.tx_fifo[0] = 0xbaabff00;
-    pio.fifo.tx_fifo_count = 1;
+    else {
+        pio = PioStateMachine();
+        pio.setDefault();
+    }
 
     // Reset GUI state
     tick_steps = 1;
@@ -91,7 +68,7 @@ void PioStateMachineApp::renderControlWindow() {
 
     ImGui::Separator();
     ImGui::Text("Run Until Condition");
-    static char var_name[32] = "regs.pc";
+    static char var_name[32] = "pc";
     static uint32_t target_value = 0;
     static int max_cycles = 10000;
     ImGui::InputText("Variable Name", var_name, IM_ARRAYSIZE(var_name));
@@ -215,22 +192,22 @@ void PioStateMachineApp::renderVariableWindow() {
                 ImGui::TableSetupColumn("Pindir (0=out,1=in)");
                 ImGui::TableHeadersRow();
 
-                for (int pin = 0; pin < 32; ++pin) {
+                for (int i = 0; i < 32; ++i) {
                     ImGui::TableNextRow();
                     ImGui::TableSetColumnIndex(0);
-                    ImGui::Text("%d", pin);
+                    ImGui::Text("%d", i);
                     ImGui::TableSetColumnIndex(1);
-                    int raw_data = pio.gpio.raw_data[pin];
-                    ImGui::PushID(pin * 2);
+                    int raw_data = pio.gpio.raw_data[i];
+                    ImGui::PushID(i * 2);
                     if (ImGui::InputInt("##raw_data", &raw_data, 0)) {
-                        pio.gpio.raw_data[pin] = static_cast<int8_t>(raw_data & 1);
+                        pio.gpio.raw_data[i] = static_cast<int8_t>(raw_data & 1);
                     }
                     ImGui::PopID();
                     ImGui::TableSetColumnIndex(2);
-                    int pindir = pio.gpio.pindirs[pin];
-                    ImGui::PushID(pin * 2 + 1);
+                    int pindir = pio.gpio.pindirs[i];
+                    ImGui::PushID(i * 2 + 1);
                     if (ImGui::InputInt("##pindir", &pindir, 0)) {
-                        pio.gpio.pindirs[pin] = static_cast<int8_t>(pindir & 1);
+                        pio.gpio.pindirs[i] = static_cast<int8_t>(pindir & 1);
                     }
                     ImGui::PopID();
                 }
@@ -485,7 +462,7 @@ void PioStateMachineApp::renderSettingsWindow() {
 
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0);
-        ImGui::Text("Warp Start");
+        ImGui::Text("Wrap Start");
         ImGui::TableSetColumnIndex(1);
         uint32_t wrap_start = pio.settings.wrap_start;
         if (ImGui::InputScalar("##wrap_start", ImGuiDataType_U32, &wrap_start)) {
@@ -494,7 +471,7 @@ void PioStateMachineApp::renderSettingsWindow() {
 
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0);
-        ImGui::Text("Warp End");
+        ImGui::Text("Wrap End");
         ImGui::TableSetColumnIndex(1);
         uint32_t wrap_end = pio.settings.wrap_end;
         if (ImGui::InputScalar("##wrap_end", ImGuiDataType_U32, &wrap_end)) {
@@ -577,19 +554,33 @@ void PioStateMachineApp::renderProgramWindow() {
     }
 
     ImGui::Text("Instruction Memory");
+    ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Highlighted instruction is currently executing");
     ImGui::Separator();
 
     if (ImGui::BeginTable("InstructionTable", 3, ImGuiTableFlags_Borders | ImGuiTableFlags_SizingStretchProp)) {
         ImGui::TableSetupColumn("Address", ImGuiTableColumnFlags_WidthFixed);
         ImGui::TableSetupColumn("Instruction");
-        ImGui::TableSetupColumn("Current PC");
+        ImGui::TableSetupColumn("Current");
         ImGui::TableHeadersRow();
 
-        uint32_t current_pc = pio.regs.pc;
+        // Estimate the current instruction's address (typically pc - 1, unless jumped)
+        int current_addr = -1;
+        if (pio.regs.pc > 0 && pio.instructionMemory[pio.regs.pc - 1] == pio.currentInstruction && !pio.exec_command) {
+            current_addr = pio.regs.pc - 1;
+        }
+        else {
+            // Fallback: search for the current instruction in memory
+            for (int i = 0; i < 32; ++i) {
+                if (pio.instructionMemory[i] == pio.currentInstruction) {
+                    current_addr = i;
+                    break;
+                }
+            }
+        }
 
-        for (int i = 0; i < 32; ++i) {  // Show all 32 possible instructions
+        for (int i = 0; i < 32; ++i) {
             ImGui::TableNextRow();
-            if (i == current_pc) {
+            if (i == current_addr) {
                 ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, ImGui::GetColorU32(ImVec4(0.3f, 0.6f, 0.3f, 0.65f)));
             }
             ImGui::TableSetColumnIndex(0);
@@ -602,8 +593,11 @@ void PioStateMachineApp::renderProgramWindow() {
             }
             ImGui::PopID();
             ImGui::TableSetColumnIndex(2);
-            if (i == current_pc) {
+            if (i == current_addr) {
                 ImGui::Text("<-- Current");
+            }
+            else if (i == pio.regs.pc) {
+                ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "<-- Next");
             }
         }
 
