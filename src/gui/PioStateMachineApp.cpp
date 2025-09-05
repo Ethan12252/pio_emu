@@ -39,6 +39,7 @@ void PioStateMachineApp::initialize() {
     show_variable_window = true;
     show_program_window = true;
     show_runtime_window = true;
+    show_settings_window = true;
     done = false;
 }
 
@@ -124,34 +125,34 @@ void PioStateMachineApp::renderVariableWindow() {
                 ImGui::TableSetColumnIndex(0);
                 ImGui::Text("X");
                 ImGui::TableSetColumnIndex(1);
-                uint32_t x_val = pio.get_var("regs.x");
+                uint32_t x_val = pio.regs.x;
                 if (ImGui::InputScalar("##x", ImGuiDataType_U32, &x_val, nullptr, nullptr, "%08X", ImGuiInputTextFlags_CharsHexadecimal)) {
-                    pio.set_var("regs.x", x_val);
+                    pio.regs.x = x_val;
                 }
 
                 ImGui::TableNextRow();
                 ImGui::TableSetColumnIndex(0);
                 ImGui::Text("Y");
                 ImGui::TableSetColumnIndex(1);
-                uint32_t y_val = pio.get_var("regs.y");
+                uint32_t y_val = pio.regs.y;
                 if (ImGui::InputScalar("##y", ImGuiDataType_U32, &y_val, nullptr, nullptr, "%08X", ImGuiInputTextFlags_CharsHexadecimal)) {
-                    pio.set_var("regs.y", y_val);
+                    pio.regs.y = y_val;
                 }
 
                 ImGui::TableNextRow();
                 ImGui::TableSetColumnIndex(0);
                 ImGui::Text("ISR");
                 ImGui::TableSetColumnIndex(1);
-                uint32_t isr_val = pio.get_var("regs.isr");
+                uint32_t isr_val = pio.regs.isr;
                 if (ImGui::InputScalar("##isr", ImGuiDataType_U32, &isr_val, nullptr, nullptr, "%08X", ImGuiInputTextFlags_CharsHexadecimal)) {
-                    pio.set_var("regs.isr", isr_val);
+                    pio.regs.isr = isr_val;
                 }
                 ImGui::SameLine();
                 ImGui::Text("(Shift Count:");
                 ImGui::SameLine();
-                uint32_t isr_count = pio.get_var("regs.isr_shift_count");
+                uint32_t isr_count = pio.regs.isr_shift_count;
                 if (ImGui::InputScalar("##isrcount", ImGuiDataType_U32, &isr_count)) {
-                    if (isr_count <= 32) pio.set_var("regs.isr_shift_count", isr_count);
+                    if (isr_count <= 32) pio.regs.isr_shift_count = isr_count;
                 }
                 ImGui::SameLine();
                 ImGui::Text(")");
@@ -160,16 +161,16 @@ void PioStateMachineApp::renderVariableWindow() {
                 ImGui::TableSetColumnIndex(0);
                 ImGui::Text("OSR");
                 ImGui::TableSetColumnIndex(1);
-                uint32_t osr_val = pio.get_var("regs.osr");
+                uint32_t osr_val = pio.regs.osr;
                 if (ImGui::InputScalar("##osr", ImGuiDataType_U32, &osr_val, nullptr, nullptr, "%08X", ImGuiInputTextFlags_CharsHexadecimal)) {
-                    pio.set_var("regs.osr", osr_val);
+                    pio.regs.osr = osr_val;
                 }
                 ImGui::SameLine();
                 ImGui::Text("(Shift Count:");
                 ImGui::SameLine();
-                uint32_t osr_count = pio.get_var("regs.osr_shift_count");
+                uint32_t osr_count = pio.regs.osr_shift_count;
                 if (ImGui::InputScalar("##osrcount", ImGuiDataType_U32, &osr_count)) {
-                    if (osr_count <= 32) pio.set_var("regs.osr_shift_count", osr_count);
+                    if (osr_count <= 32) pio.regs.osr_shift_count = osr_count;
                 }
                 ImGui::SameLine();
                 ImGui::Text(")");
@@ -178,27 +179,28 @@ void PioStateMachineApp::renderVariableWindow() {
                 ImGui::TableSetColumnIndex(0);
                 ImGui::Text("PC");
                 ImGui::TableSetColumnIndex(1);
-                uint32_t pc_val = pio.get_var("regs.pc");
+                uint32_t pc_val = pio.regs.pc;
                 if (ImGui::InputScalar("##pc", ImGuiDataType_U32, &pc_val)) {
-                    if (pc_val < 32) pio.set_var("regs.pc", pc_val);
+                    if (pc_val < 32)
+                        pio.regs.pc = pc_val;
                 }
 
                 ImGui::TableNextRow();
                 ImGui::TableSetColumnIndex(0);
                 ImGui::Text("Delay");
                 ImGui::TableSetColumnIndex(1);
-                uint32_t delay_val = pio.get_var("regs.delay");
+                uint32_t delay_val = pio.regs.delay;
                 if (ImGui::InputScalar("##delay", ImGuiDataType_U32, &delay_val)) {
-                    pio.set_var("regs.delay", delay_val);
+                    pio.regs.delay = delay_val;
                 }
 
                 ImGui::TableNextRow();
                 ImGui::TableSetColumnIndex(0);
                 ImGui::Text("Status");
                 ImGui::TableSetColumnIndex(1);
-                uint32_t status_val = pio.get_var("regs.status");
+                uint32_t status_val = pio.regs.status;
                 if (ImGui::InputScalar("##status", ImGuiDataType_U32, &status_val)) {
-                    pio.set_var("regs.status", status_val);
+                    pio.regs.status = status_val;
                 }
 
                 ImGui::EndTable();
@@ -207,30 +209,31 @@ void PioStateMachineApp::renderVariableWindow() {
         }
 
         if (ImGui::BeginTabItem("GPIO")) {
-            if (ImGui::BeginTable("GPIOTable", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_SizingStretchProp)) {
-                ImGui::TableSetupColumn("Property", ImGuiTableColumnFlags_WidthFixed);
-                ImGui::TableSetupColumn("Value");
+            if (ImGui::BeginTable("GPIOTable", 3, ImGuiTableFlags_Borders | ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_ScrollY)) {
+                ImGui::TableSetupColumn("Pin", ImGuiTableColumnFlags_WidthFixed);
+                ImGui::TableSetupColumn("Raw Data");
+                ImGui::TableSetupColumn("Pindir (0=out,1=in)");
                 ImGui::TableHeadersRow();
 
-                ImGui::TableNextRow();
-                ImGui::TableSetColumnIndex(0);
-                ImGui::Text("Pin 22 Raw Data");
-                ImGui::TableSetColumnIndex(1);
-                int raw22 = pio.gpio.raw_data[22];
-                if (ImGui::InputInt("##raw22", &raw22, 0)) {
-                    pio.gpio.raw_data[22] = static_cast<int8_t>(raw22 & 1);
+                for (int pin = 0; pin < 32; ++pin) {
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0);
+                    ImGui::Text("%d", pin);
+                    ImGui::TableSetColumnIndex(1);
+                    int raw_data = pio.gpio.raw_data[pin];
+                    ImGui::PushID(pin * 2);
+                    if (ImGui::InputInt("##raw_data", &raw_data, 0)) {
+                        pio.gpio.raw_data[pin] = static_cast<int8_t>(raw_data & 1);
+                    }
+                    ImGui::PopID();
+                    ImGui::TableSetColumnIndex(2);
+                    int pindir = pio.gpio.pindirs[pin];
+                    ImGui::PushID(pin * 2 + 1);
+                    if (ImGui::InputInt("##pindir", &pindir, 0)) {
+                        pio.gpio.pindirs[pin] = static_cast<int8_t>(pindir & 1);
+                    }
+                    ImGui::PopID();
                 }
-
-                ImGui::TableNextRow();
-                ImGui::TableSetColumnIndex(0);
-                ImGui::Text("Pin 22 Pindir");
-                ImGui::TableSetColumnIndex(1);
-                int pindir22 = pio.gpio.pindirs[22];
-                if (ImGui::InputInt("##pindir22", &pindir22, 0)) {
-                    pio.gpio.pindirs[22] = static_cast<int8_t>(pindir22 & 1);
-                }
-                ImGui::SameLine();
-                ImGui::Text("(0=output,1=input)");
 
                 ImGui::EndTable();
             }
@@ -263,20 +266,46 @@ void PioStateMachineApp::renderVariableWindow() {
 
                 ImGui::TableNextRow();
                 ImGui::TableSetColumnIndex(0);
-                ImGui::Text("TX FIFO[0]");
+                ImGui::Text("Push is Stalling");
                 ImGui::TableSetColumnIndex(1);
-                uint32_t tx0 = pio.fifo.tx_fifo[0];
-                if (ImGui::InputScalar("##tx0", ImGuiDataType_U32, &tx0, nullptr, nullptr, "%08X", ImGuiInputTextFlags_CharsHexadecimal)) {
-                    pio.fifo.tx_fifo[0] = tx0;
+                bool push_stall = pio.fifo.push_is_stalling;
+                if (ImGui::Checkbox("##push_stall", &push_stall)) {
+                    pio.fifo.push_is_stalling = push_stall;
                 }
 
                 ImGui::TableNextRow();
                 ImGui::TableSetColumnIndex(0);
-                ImGui::Text("RX FIFO[0]");
+                ImGui::Text("Pull is Stalling");
                 ImGui::TableSetColumnIndex(1);
-                uint32_t rx0 = pio.fifo.rx_fifo[0];
-                if (ImGui::InputScalar("##rx0", ImGuiDataType_U32, &rx0, nullptr, nullptr, "%08X", ImGuiInputTextFlags_CharsHexadecimal)) {
-                    pio.fifo.rx_fifo[0] = rx0;
+                bool pull_stall = pio.fifo.pull_is_stalling;
+                if (ImGui::Checkbox("##pull_stall", &pull_stall)) {
+                    pio.fifo.pull_is_stalling = pull_stall;
+                }
+
+                for (int i = 0; i < 8; ++i) {
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0);
+                    ImGui::Text("TX FIFO[%d]", i);
+                    ImGui::TableSetColumnIndex(1);
+                    uint32_t tx_val = pio.fifo.tx_fifo[i];
+                    ImGui::PushID(i);
+                    if (ImGui::InputScalar("##tx", ImGuiDataType_U32, &tx_val, nullptr, nullptr, "%08X", ImGuiInputTextFlags_CharsHexadecimal)) {
+                        pio.fifo.tx_fifo[i] = tx_val;
+                    }
+                    ImGui::PopID();
+                }
+
+                for (int i = 0; i < 8; ++i) {
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0);
+                    ImGui::Text("RX FIFO[%d]", i);
+                    ImGui::TableSetColumnIndex(1);
+                    uint32_t rx_val = pio.fifo.rx_fifo[i];
+                    ImGui::PushID(i + 8);
+                    if (ImGui::InputScalar("##rx", ImGuiDataType_U32, &rx_val, nullptr, nullptr, "%08X", ImGuiInputTextFlags_CharsHexadecimal)) {
+                        pio.fifo.rx_fifo[i] = rx_val;
+                    }
+                    ImGui::PopID();
                 }
 
                 ImGui::EndTable();
@@ -323,6 +352,224 @@ void PioStateMachineApp::renderVariableWindow() {
     ImGui::End();
 }
 
+void PioStateMachineApp::renderSettingsWindow() {
+    if (!ImGui::Begin("Settings", &show_settings_window)) {
+        ImGui::End();
+        return;
+    }
+
+    ImGui::Text("Configuration Settings");
+    ImGui::Separator();
+
+    if (ImGui::BeginTable("SettingsTable", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_ScrollY, ImVec2(0.0f, ImGui::GetTextLineHeight() * 20))) {
+        ImGui::TableSetupColumn("Setting", ImGuiTableColumnFlags_WidthFixed);
+        ImGui::TableSetupColumn("Value");
+        ImGui::TableHeadersRow();
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Sideset Count");
+        ImGui::TableSetColumnIndex(1);
+        int sideset_count = pio.settings.sideset_count;
+        if (ImGui::InputInt("##sideset_count", &sideset_count)) {
+            pio.settings.sideset_count = sideset_count;
+        }
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Sideset Opt");
+        ImGui::TableSetColumnIndex(1);
+        bool sideset_opt = pio.settings.sideset_opt;
+        if (ImGui::Checkbox("##sideset_opt", &sideset_opt)) {
+            pio.settings.sideset_opt = sideset_opt;
+        }
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Sideset to Pindirs");
+        ImGui::TableSetColumnIndex(1);
+        bool sideset_to_pindirs = pio.settings.sideset_to_pindirs;
+        if (ImGui::Checkbox("##sideset_to_pindirs", &sideset_to_pindirs)) {
+            pio.settings.sideset_to_pindirs = sideset_to_pindirs;
+        }
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Sideset Base");
+        ImGui::TableSetColumnIndex(1);
+        int sideset_base = pio.settings.sideset_base;
+        if (ImGui::InputInt("##sideset_base", &sideset_base)) {
+            pio.settings.sideset_base = sideset_base;
+        }
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("In Base");
+        ImGui::TableSetColumnIndex(1);
+        int in_base = pio.settings.in_base;
+        if (ImGui::InputInt("##in_base", &in_base)) {
+            pio.settings.in_base = in_base;
+        }
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Out Base");
+        ImGui::TableSetColumnIndex(1);
+        int out_base = pio.settings.out_base;
+        if (ImGui::InputInt("##out_base", &out_base)) {
+            pio.settings.out_base = out_base;
+        }
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Set Base");
+        ImGui::TableSetColumnIndex(1);
+        int set_base = pio.settings.set_base;
+        if (ImGui::InputInt("##set_base", &set_base)) {
+            pio.settings.set_base = set_base;
+        }
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Jmp Pin");
+        ImGui::TableSetColumnIndex(1);
+        int jmp_pin = pio.settings.jmp_pin;
+        if (ImGui::InputInt("##jmp_pin", &jmp_pin)) {
+            pio.settings.jmp_pin = jmp_pin;
+        }
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Set Count");
+        ImGui::TableSetColumnIndex(1);
+        int set_count = pio.settings.set_count;
+        if (ImGui::InputInt("##set_count", &set_count)) {
+            pio.settings.set_count = set_count;
+        }
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Out Count");
+        ImGui::TableSetColumnIndex(1);
+        int out_count = pio.settings.out_count;
+        if (ImGui::InputInt("##out_count", &out_count)) {
+            pio.settings.out_count = out_count;
+        }
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Push Threshold");
+        ImGui::TableSetColumnIndex(1);
+        uint32_t push_threshold = pio.settings.push_threshold;
+        if (ImGui::InputScalar("##push_threshold", ImGuiDataType_U32, &push_threshold)) {
+            pio.settings.push_threshold = push_threshold;
+        }
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Pull Threshold");
+        ImGui::TableSetColumnIndex(1);
+        uint32_t pull_threshold = pio.settings.pull_threshold;
+        if (ImGui::InputScalar("##pull_threshold", ImGuiDataType_U32, &pull_threshold)) {
+            pio.settings.pull_threshold = pull_threshold;
+        }
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("FIFO Level N");
+        ImGui::TableSetColumnIndex(1);
+        int fifo_level_N = pio.settings.fifo_level_N;
+        if (ImGui::InputInt("##fifo_level_N", &fifo_level_N)) {
+            pio.settings.fifo_level_N = fifo_level_N;
+        }
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Warp Start");
+        ImGui::TableSetColumnIndex(1);
+        uint32_t warp_start = pio.settings.warp_start;
+        if (ImGui::InputScalar("##warp_start", ImGuiDataType_U32, &warp_start)) {
+            pio.settings.warp_start = warp_start;
+        }
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Warp End");
+        ImGui::TableSetColumnIndex(1);
+        uint32_t warp_end = pio.settings.warp_end;
+        if (ImGui::InputScalar("##warp_end", ImGuiDataType_U32, &warp_end)) {
+            pio.settings.warp_end = warp_end;
+        }
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("In Shift Right");
+        ImGui::TableSetColumnIndex(1);
+        bool in_shift_right = pio.settings.in_shift_right;
+        if (ImGui::Checkbox("##in_shift_right", &in_shift_right)) {
+            pio.settings.in_shift_right = in_shift_right;
+        }
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Out Shift Right");
+        ImGui::TableSetColumnIndex(1);
+        bool out_shift_right = pio.settings.out_shift_right;
+        if (ImGui::Checkbox("##out_shift_right", &out_shift_right)) {
+            pio.settings.out_shift_right = out_shift_right;
+        }
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("In Shift Autopush");
+        ImGui::TableSetColumnIndex(1);
+        bool in_shift_autopush = pio.settings.in_shift_autopush;
+        if (ImGui::Checkbox("##in_shift_autopush", &in_shift_autopush)) {
+            pio.settings.in_shift_autopush = in_shift_autopush;
+        }
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Out Shift Autopull");
+        ImGui::TableSetColumnIndex(1);
+        bool out_shift_autopull = pio.settings.out_shift_autopull;
+        if (ImGui::Checkbox("##out_shift_autopull", &out_shift_autopull)) {
+            pio.settings.out_shift_autopull = out_shift_autopull;
+        }
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Autopull Enable");
+        ImGui::TableSetColumnIndex(1);
+        bool autopull_enable = pio.settings.autopull_enable;
+        if (ImGui::Checkbox("##autopull_enable", &autopull_enable)) {
+            pio.settings.autopull_enable = autopull_enable;
+        }
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Autopush Enable");
+        ImGui::TableSetColumnIndex(1);
+        bool autopush_enable = pio.settings.autopush_enable;
+        if (ImGui::Checkbox("##autopush_enable", &autopush_enable)) {
+            pio.settings.autopush_enable = autopush_enable;
+        }
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Status Sel");
+        ImGui::TableSetColumnIndex(1);
+        bool status_sel = pio.settings.status_sel;
+        if (ImGui::Checkbox("##status_sel", &status_sel)) {
+            pio.settings.status_sel = status_sel;
+        }
+
+        ImGui::EndTable();
+    }
+
+    ImGui::End();
+}
+
 void PioStateMachineApp::renderProgramWindow() {
     if (!ImGui::Begin("Program", &show_program_window)) {
         ImGui::End();
@@ -332,13 +579,19 @@ void PioStateMachineApp::renderProgramWindow() {
     ImGui::Text("Instruction Memory");
     ImGui::Separator();
 
-    if (ImGui::BeginTable("InstructionTable", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_SizingStretchProp)) {
+    if (ImGui::BeginTable("InstructionTable", 3, ImGuiTableFlags_Borders | ImGuiTableFlags_SizingStretchProp)) {
         ImGui::TableSetupColumn("Address", ImGuiTableColumnFlags_WidthFixed);
         ImGui::TableSetupColumn("Instruction");
+        ImGui::TableSetupColumn("Current PC");
         ImGui::TableHeadersRow();
 
-        for (int i = 0; i < program_size; ++i) {
+        uint32_t current_pc = pio.regs.pc;
+
+        for (int i = 0; i < 32; ++i) {  // Show all 32 possible instructions
             ImGui::TableNextRow();
+            if (i == current_pc) {
+                ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, ImGui::GetColorU32(ImVec4(0.3f, 0.6f, 0.3f, 0.65f)));
+            }
             ImGui::TableSetColumnIndex(0);
             ImGui::Text("0x%02X", i);
             ImGui::TableSetColumnIndex(1);
@@ -348,6 +601,10 @@ void PioStateMachineApp::renderProgramWindow() {
                 pio.instructionMemory[i] = instr;
             }
             ImGui::PopID();
+            ImGui::TableSetColumnIndex(2);
+            if (i == current_pc) {
+                ImGui::Text("<-- Current");
+            }
         }
 
         ImGui::EndTable();
@@ -357,22 +614,108 @@ void PioStateMachineApp::renderProgramWindow() {
 }
 
 void PioStateMachineApp::renderRuntimeWindow() {
-    // Placeholder for runtime info window
     if (!ImGui::Begin("Runtime Info", &show_runtime_window)) {
         ImGui::End();
         return;
     }
-    ImGui::Text("Runtime info window not yet implemented.");
+
+    ImGui::Text("Runtime Flags and State");
+    ImGui::Separator();
+
+    if (ImGui::BeginTable("RuntimeTable", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_SizingStretchProp)) {
+        ImGui::TableSetupColumn("Property", ImGuiTableColumnFlags_WidthFixed);
+        ImGui::TableSetupColumn("Value");
+        ImGui::TableHeadersRow();
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Clock");
+        ImGui::TableSetColumnIndex(1);
+        int clock_val = pio.clock;
+        ImGui::Text("%d", clock_val);
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Current Instruction");
+        ImGui::TableSetColumnIndex(1);
+        uint16_t curr_instr = pio.currentInstruction;
+        ImGui::Text("0x%04X", curr_instr);
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("State Machine Number");
+        ImGui::TableSetColumnIndex(1);
+        uint16_t sm_num = pio.stateMachineNumber;
+        ImGui::Text("%u", sm_num);
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Jmp To");
+        ImGui::TableSetColumnIndex(1);
+        int jmp_to = pio.jmp_to;
+        if (ImGui::InputInt("##jmp_to", &jmp_to)) {
+            pio.jmp_to = jmp_to;
+        }
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Skip Increase PC");
+        ImGui::TableSetColumnIndex(1);
+        bool skip_inc_pc = pio.skip_increase_pc;
+        if (ImGui::Checkbox("##skip_inc_pc", &skip_inc_pc)) {
+            pio.skip_increase_pc = skip_inc_pc;
+        }
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Delay Delay");
+        ImGui::TableSetColumnIndex(1);
+        bool delay_delay = pio.delay_delay;
+        if (ImGui::Checkbox("##delay_delay", &delay_delay)) {
+            pio.delay_delay = delay_delay;
+        }
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Skip Delay");
+        ImGui::TableSetColumnIndex(1);
+        bool skip_delay = pio.skip_delay;
+        if (ImGui::Checkbox("##skip_delay", &skip_delay)) {
+            pio.skip_delay = skip_delay;
+        }
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Exec Command");
+        ImGui::TableSetColumnIndex(1);
+        bool exec_command = pio.exec_command;
+        if (ImGui::Checkbox("##exec_command", &exec_command)) {
+            pio.exec_command = exec_command;
+        }
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Wait is Stalling");
+        ImGui::TableSetColumnIndex(1);
+        bool wait_stall = pio.wait_is_stalling;
+        if (ImGui::Checkbox("##wait_stall", &wait_stall)) {
+            pio.wait_is_stalling = wait_stall;
+        }
+
+        ImGui::EndTable();
+    }
+
     ImGui::End();
 }
 
 void PioStateMachineApp::renderUI() {
     renderControlWindow();
     renderVariableWindow();
+    renderSettingsWindow();
     renderProgramWindow();
     renderRuntimeWindow();
 
-    if (!show_control_window && !show_variable_window && !show_program_window && !show_runtime_window) {
+    if (!show_control_window && !show_variable_window && !show_settings_window && !show_program_window && !show_runtime_window) {
         done = true;
     }
 }

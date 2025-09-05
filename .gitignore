@@ -195,3 +195,8 @@ Thumbs.db
 *.bak
 *.tmp
 Testing
+
+tools/*.h
+tools/*.pio
+tools/*.ini
+

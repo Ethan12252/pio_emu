@@ -9,6 +9,7 @@ private:
     bool show_variable_window = true;
     bool show_program_window = true;
     bool show_runtime_window = true;
+    bool show_settings_window = true;
     bool done = false;
     int tick_steps = 1;
     int program_size = 0;
@@ -18,6 +19,7 @@ private:
     void renderVariableWindow();
     void renderProgramWindow();
     void renderRuntimeWindow();
+    void renderSettingsWindow();
 
 public:
     void initialize();
