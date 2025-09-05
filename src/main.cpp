@@ -87,6 +87,19 @@ void testIniParse(PioStateMachine& pio)
     
 }
 
+void getVar(PioStateMachine& pio)
+{
+    fmt::println("-----setters:");
+    auto keys = pio.get_available_set_vars();
+    for (const auto& i : keys)
+        fmt::println("{}", i);
+    fmt::println("-----getters:");
+    keys = pio.get_available_get_vars();
+    for (const auto& i : keys)
+        fmt::println("{}", i);
+
+}
+
 int main(int argc, char* argv[])
 {
     try
@@ -97,7 +110,7 @@ int main(int argc, char* argv[])
             LOG_FATAL("No config provided, using default config");
 
         PioStateMachine pio(filepath);
-        //testIniParse(pio);
+        getVar(pio);
         return 0;
     }
     catch (const std::exception& e)

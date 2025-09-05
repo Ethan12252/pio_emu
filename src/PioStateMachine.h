@@ -113,6 +113,8 @@ public:
 
     //private:
     void setup_var_access();
+    std::vector<std::string> get_available_set_vars() const;
+    std::vector<std::string> get_available_get_vars() const;
     std::unordered_map <std::string, std::function<uint32_t()>> var_getters;
     std::unordered_map <std::string, std::function<void(uint32_t)>> var_setters;
 

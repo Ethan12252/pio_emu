@@ -184,8 +184,8 @@ void PioStateMachine::parseSetting(const std::string& filepath)
         }
     }
 
-    for (const auto& i : instructionMemory)
-        fmt::println("{:#x}", i);
+    /*for (const auto& i : instructionMemory)
+        fmt::println("{:#x}", i);*/
 }
 
 void PioStateMachine::push_to_rx_fifo()

@@ -94,15 +94,27 @@ void PioStateMachine::set_var(const std::string& name, uint32_t value) {
     }
 }
 
-//std::vector<std::string> PioStateMachine::get_available_set_vars() const
-//{
-//    std::vector<std::string> keys;
-//    keys.reserve(myMap.size());  // Preallocate memory
-//
-//    for (const auto& pair : myMap) {
-//        keys.push_back(pair.first);
-//    }
-//}
+std::vector<std::string> PioStateMachine::get_available_set_vars() const
+{
+    std::vector<std::string> keys;
+    keys.reserve(var_setters.size());  // Preallocate memory
+
+    for (const auto& pair : var_setters) 
+        keys.push_back(pair.first);
+    
+    return keys;
+}
+
+std::vector<std::string> PioStateMachine::get_available_get_vars() const
+{
+    std::vector<std::string> keys;
+    keys.reserve(var_getters.size());  // Preallocate memory
+
+    for (const auto& pair : var_getters)
+        keys.push_back(pair.first);
+
+    return keys;
+}
 
 bool PioStateMachine::run_until_var(const std::string& var_name, uint32_t target, int max_cycles) {
     for (int i = 0; i < max_cycles; ++i) 
