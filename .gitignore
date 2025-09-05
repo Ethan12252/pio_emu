@@ -200,3 +200,4 @@ tools/*.h
 tools/*.pio
 tools/*.ini
 
+*.ini

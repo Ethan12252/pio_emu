@@ -54,8 +54,8 @@ inline void ws2812_test(PioStateMachine& pio)
     pio.settings.pull_threshold = 24;    // 24bit gbr data
     pio.settings.out_shift_right = false;// shift left
     pio.settings.autopull_enable = true; // we need auto pull
-    pio.settings.warp_start = 0;
-    pio.settings.warp_end = 3;
+    pio.settings.wrap_start = 0;
+    pio.settings.wrap_end = 3;
 
     pio.gpio.pindirs[22] = 0;   // pin22 pindir to output
 
@@ -81,10 +81,28 @@ inline void ws2812_test(PioStateMachine& pio)
     }
 }
 
-int main()
+void testIniParse(PioStateMachine& pio)
 {
-    PioStateMachine pio;
-    //ws2812_test(pio);
-    varialbeAccessTest(pio);
-    return 0;
+
+    
+}
+
+int main(int argc, char* argv[])
+{
+    try
+    {
+        std::string filepath(argv[1]);
+        fmt::print("{}", filepath);
+        if (argc < 2)
+            LOG_FATAL("No config provided, using default config");
+
+        PioStateMachine pio(filepath);
+        //testIniParse(pio);
+        return 0;
+    }
+    catch (const std::exception& e)
+    {
+        fmt::print(stderr, "{}", e.what());
+    }
+    
 }

@@ -124,7 +124,7 @@ TEST_CASE("WAIT on IRQ")
         for (int i = 0; i < 8; i++)
             pio.instructionMemory[i] = 0x20c0 + i;
 
-        pio.settings.warp_end = 7;
+        pio.settings.wrap_end = 7;
 
         for (int i = 0; i < 8; i++)
         {
@@ -150,7 +150,7 @@ TEST_CASE("WAIT on IRQ")
         for (int i = 0; i < 8; i++)
             pio.instructionMemory[i] = 0x2040 + i;
 
-        pio.settings.warp_end = 7;
+        pio.settings.wrap_end = 7;
 
         for (int i = 0; i < 8; i++)
         {

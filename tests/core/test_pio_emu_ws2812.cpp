@@ -56,8 +56,8 @@ TEST_CASE("JMP Always")
     pio.settings.pull_threshold = 24;    // 24bit gbr data
     pio.settings.out_shift_right = false;// shift left
     pio.settings.autopull_enable = true; // we need auto pull
-    pio.settings.warp_start = 0;
-    pio.settings.warp_end = 3;
+    pio.settings.wrap_start = 0;
+    pio.settings.wrap_end = 3;
 
     pio.gpio.pindirs[22] = 0;   // pin22 pindir to output
 

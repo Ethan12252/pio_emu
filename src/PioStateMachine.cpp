@@ -9,8 +9,17 @@ PioStateMachine::PioStateMachine()
     // Initilze
     setDefault();
 
-    // TODO: Parse the settings and instruction text from inifile
-    
+    // Reflaection
+    setup_var_access();
+}
+
+PioStateMachine::PioStateMachine(const std::string& filepath)
+{
+    // Initilze
+    setDefault();
+
+    // parse Settings and insstruction from ini file
+    parseSetting(filepath);
 
     // Reflaection
     setup_var_access();
@@ -67,8 +76,8 @@ void PioStateMachine::setDefault()
     settings.push_threshold = 32;
     settings.pull_threshold = 32;
     settings.fifo_level_N = -1;
-    settings.warp_start = 0;
-    settings.warp_end = 31;
+    settings.wrap_start = 0;
+    settings.wrap_end = 31;
     settings.in_shift_right = false;
     settings.out_shift_right = false;
     settings.in_shift_autopush = false;
@@ -85,6 +94,76 @@ void PioStateMachine::setDefault()
     fifo.pull_is_stalling = false;
 
     irq_is_waiting = false;
+}
+
+void PioStateMachine::parseSetting(const std::string& filepath)
+{
+    IniParse::IniData data = IniParse::parseIni(filepath);
+    for (const auto& setting : data["settings"])
+    {
+        const std::string& key = setting.first;
+        const std::string& val = setting.second;
+
+        fmt::println("Checking: {}", setting.first);
+        try {
+        if (key == "sideset_count")
+            settings.sideset_count = std::stoi(val);
+        else if (key == "sideset_opt")
+            settings.sideset_opt = (val == "true");
+        else if (key == "sideset_to_pindirs")
+            settings.sideset_to_pindirs = (val == "true");
+        else if (key == "sideset_base")
+            settings.sideset_base = std::stoi(val);
+        else if (key == "in_base")
+            settings.in_base = std::stoi(val);
+        else if (key == "out_base")
+            settings.out_base = std::stoi(val);
+        else if (key == "set_base")
+            settings.set_base = std::stoi(val);
+        else if (key == "jmp_pin")
+            settings.jmp_pin = std::stoi(val);
+        else if (key == "set_count")
+            settings.set_count = std::stoi(val);
+        else if (key == "out_count")
+            settings.out_count = std::stoi(val);
+        else if (key == "push_threshold")
+            settings.push_threshold = static_cast<uint32_t>(std::stoul(val));
+        else if (key == "pull_threshold")
+            settings.pull_threshold = static_cast<uint32_t>(std::stoul(val));
+        else if (key == "fifo_level_N")
+            settings.fifo_level_N = std::stoi(val);
+        else if (key == "wrap_start")
+            settings.wrap_start = static_cast<uint32_t>(std::stoul(val));
+        else if (key == "wrap_end")
+            settings.wrap_end = static_cast<uint32_t>(std::stoul(val));
+        else if (key == "in_shift_right")
+            settings.in_shift_right = (val == "true");
+        else if (key == "out_shift_right")
+            settings.out_shift_right = (val == "true");
+        else if (key == "in_shift_autopush")
+            settings.in_shift_autopush = (val == "true");
+        else if (key == "out_shift_autopull")
+            settings.out_shift_autopull = (val == "true");
+        else if (key == "autopull_enable")
+            settings.autopull_enable = (val == "true");
+        else if (key == "autopush_enable")
+            settings.autopush_enable = (val == "true");
+        else if (key == "status_sel")
+            settings.status_sel = (val == "true");
+        else
+            LOG_FATAL("Unknown setting when parsing ini file.");
+        }
+        catch (const std::exception& e)
+        {
+            fmt::print(stderr, "{}", e.what());
+        }
+    }
+
+    for (const auto& setting : data["instructions"])
+    {
+        //std::cout << "key: " << setting.first << " value: " << setting.second << "\n";
+
+    }
 }
 
 void PioStateMachine::push_to_rx_fifo()
@@ -162,8 +241,8 @@ void PioStateMachine::tick()
         if (skip_increase_pc == false)  // We should increase PC as normal 
         {
             regs.pc++;
-            if (regs.pc == settings.warp_end + 1)
-                regs.pc = settings.warp_start;
+            if (regs.pc == settings.wrap_end + 1)
+                regs.pc = settings.wrap_start;
         }
         else
         {

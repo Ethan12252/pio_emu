@@ -68,7 +68,7 @@ def extract_wrap_points(section_content):
 
 def generate_ini(wrap_target, wrap_end, instructions):
    ini_content = "[settings]\n"
-   ini_content += f"wrap_target = {wrap_target if wrap_target is not None else 0}\n"
+   ini_content += f"wrap_start = {wrap_target if wrap_target is not None else 0}\n"
    ini_content += f"wrap_end = {wrap_end if wrap_end is not None else 0}\n"
    ini_content += "sideset_count = 0\n"
    ini_content += "sideset_opt = false\n"

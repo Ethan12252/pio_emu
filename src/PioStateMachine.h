@@ -21,8 +21,8 @@ struct pioStateMachineSettings
     uint32_t  push_threshold = 32;
     uint32_t  pull_threshold = 32;
     int  fifo_level_N = -1;
-    uint32_t  warp_start = 0;
-    uint32_t  warp_end = 31;
+    uint32_t  wrap_start = 0;
+    uint32_t  wrap_end = 31;
     bool in_shift_right = false;
     bool out_shift_right = false;  // default is shift left
     bool in_shift_autopush = false;
@@ -36,6 +36,7 @@ class PioStateMachine
 {
 public:
     PioStateMachine();
+    PioStateMachine(const std::string& filepath);
     void tick(); // Forward a clock
 
     std::array<uint16_t, 32> instructionMemory;
@@ -132,6 +133,7 @@ public:
     void setAllGpio();
 
     void setDefault();
+    void parseSetting(const std::string& filepath);
 };
 
 

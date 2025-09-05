@@ -24,8 +24,8 @@ void PioStateMachineApp::initialize() {
     pio.settings.pull_threshold = 24;
     pio.settings.out_shift_right = false;
     pio.settings.autopull_enable = true;
-    pio.settings.warp_start = 0;
-    pio.settings.warp_end = 3;
+    pio.settings.wrap_start = 0;
+    pio.settings.wrap_end = 3;
 
     pio.gpio.pindirs[22] = 0; // Output
 
@@ -487,18 +487,18 @@ void PioStateMachineApp::renderSettingsWindow() {
         ImGui::TableSetColumnIndex(0);
         ImGui::Text("Warp Start");
         ImGui::TableSetColumnIndex(1);
-        uint32_t warp_start = pio.settings.warp_start;
-        if (ImGui::InputScalar("##warp_start", ImGuiDataType_U32, &warp_start)) {
-            pio.settings.warp_start = warp_start;
+        uint32_t wrap_start = pio.settings.wrap_start;
+        if (ImGui::InputScalar("##wrap_start", ImGuiDataType_U32, &wrap_start)) {
+            pio.settings.wrap_start = wrap_start;
         }
 
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0);
         ImGui::Text("Warp End");
         ImGui::TableSetColumnIndex(1);
-        uint32_t warp_end = pio.settings.warp_end;
-        if (ImGui::InputScalar("##warp_end", ImGuiDataType_U32, &warp_end)) {
-            pio.settings.warp_end = warp_end;
+        uint32_t wrap_end = pio.settings.wrap_end;
+        if (ImGui::InputScalar("##wrap_end", ImGuiDataType_U32, &wrap_end)) {
+            pio.settings.wrap_end = wrap_end;
         }
 
         ImGui::TableNextRow();
