@@ -105,7 +105,7 @@ void PioStateMachine::parseSetting(const std::string& filepath)
         const std::string& key = setting.first;
         const std::string& val = setting.second;
 
-        fmt::println("Checking: {}", setting.first);
+        //fmt::println("Checking: {}", setting.first);
         try {
         if (key == "sideset_count")
             settings.sideset_count = std::stoi(val);
@@ -160,11 +160,32 @@ void PioStateMachine::parseSetting(const std::string& filepath)
         }
     }
 
-    for (const auto& setting : data["instructions"])
+    for (const auto& instruction : data["instructions"])
     {
         //std::cout << "key: " << setting.first << " value: " << setting.second << "\n";
+        const std::string& key = instruction.first;
+        const std::string& val = instruction.second;
 
+        try
+        {
+            int idx = std::stoi(key);
+            bool idx_valid = idx >= 0 && idx <= settings.wrap_end;
+
+            uint16_t value = static_cast<uint16_t>(std::stoul(val, nullptr, 16));
+
+            if (idx_valid)
+                instructionMemory[idx] = value;
+            else
+                LOG_FATAL_FMT("invalid index for instruction idx:{}", idx);
+        }
+        catch (const std::exception& e)
+        {
+            LOG_FATAL_FMT("{}", e.what());
+        }
     }
+
+    for (const auto& i : instructionMemory)
+        fmt::println("{:#x}", i);
 }
 
 void PioStateMachine::push_to_rx_fifo()

@@ -76,7 +76,7 @@ inline void ws2812_test(PioStateMachine& pio)
         if (!((pio.clock - 5) % 10))
         {
             static int ist = 1;
-            fmt::print("data: {:<2}\n", ist++);
+            fmt::println("data: {:<2}\n", ist++);
         }
     }
 }
@@ -92,7 +92,7 @@ int main(int argc, char* argv[])
     try
     {
         std::string filepath(argv[1]);
-        fmt::print("{}", filepath);
+        fmt::println("{}", filepath);
         if (argc < 2)
             LOG_FATAL("No config provided, using default config");
 
@@ -102,7 +102,7 @@ int main(int argc, char* argv[])
     }
     catch (const std::exception& e)
     {
-        fmt::print(stderr, "{}", e.what());
+        fmt::println(stderr, "{}", e.what());
     }
     
 }
