@@ -1,5 +1,6 @@
 #include "PioStateMachine.h"
 #include "iniparse.h"
+#include <format>
 
 using u16 = uint16_t;
 using u32 = uint32_t;
@@ -155,7 +156,7 @@ void PioStateMachine::parseSetting(const std::string& filepath)
         }
         catch (const std::exception& e)
         {
-            fmt::print(stderr, "{}", e.what());
+            LOG_FATAL_FMT("{}", e.what());
         }
     }
 
