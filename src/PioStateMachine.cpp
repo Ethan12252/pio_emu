@@ -156,6 +156,13 @@ void PioStateMachine::parseSetting(const std::string& filepath)
                 settings.autopush_enable = (val == "true");
             else if (key == "status_sel")
                 settings.status_sel = (val == "true");
+            else if (key == "pindir")
+            {
+                uint32_t pindirMask = static_cast<uint32_t>(std::stoul(val, nullptr, 16));
+
+                for (size_t i = 0; i < gpio.pindirs.size(); ++i)
+                    gpio.pindirs[i] = (pindirMask >> i) & 1u;
+            }
             else
                 LOG_FATAL("Unknown setting when parsing ini file.");
         }
@@ -213,9 +220,7 @@ void PioStateMachine::parseSetting(const std::string& filepath)
             LOG_FATAL_FMT("{}", e.what());
         }
     }
-
-    /*for (const auto& i : instruction_text)
-        fmt::println("{}", i);*/
+    fmt::print("\n");
 }
 
 void PioStateMachine::reset(const std::string& filepath)
