@@ -67,8 +67,8 @@ int main(int argc, char** argv)
     ImGui_ImplDX11_Init(g_pd3dDevice, g_pd3dDeviceContext);
 
     // Load Fonts (adjust paths as needed)
-    ImFont* customFont = io.Fonts->AddFontFromFileTTF(R"(C:\Users\ethbr\local\msjh.ttc)", 20.0f);
-    ImFont* codeFont = io.Fonts->AddFontFromFileTTF(R"(C:\Users\ethbr\local\CascadiaCode.ttf)", 20.0f);
+    ImFont* customFont = io.Fonts->AddFontFromFileTTF(R"(./res/segoeui.ttf)", 20.0f);
+    ImFont* codeFont = io.Fonts->AddFontFromFileTTF(R"(./res/CascadiaCode.ttf)", 20.0f);
     IM_ASSERT(customFont != nullptr);
 
     pioApp.initialize();
