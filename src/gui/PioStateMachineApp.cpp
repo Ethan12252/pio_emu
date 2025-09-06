@@ -1,14 +1,12 @@
 #include "PioStateMachineApp.h"
 
+
+PioStateMachineApp::PioStateMachineApp(const std::string& filepath /*= ""*/) 
+    : ini_filepath(filepath), pio(PioStateMachine(filepath))
+{
+}
+
 void PioStateMachineApp::initialize() {
-    // Initialize with .ini file if provided, otherwise default
-    if (!ini_filepath.empty()) {
-        pio = PioStateMachine(ini_filepath);
-    }
-    else {
-        pio = PioStateMachine();
-        pio.setDefault();
-    }
 
     // Reset GUI state
     tick_steps = 1;

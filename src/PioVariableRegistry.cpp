@@ -122,7 +122,7 @@ bool PioStateMachine::run_until_var(const std::string& var_name, uint32_t target
     for (int i = 0; i < max_cycles; ++i)
     {
         auto var = get_var(var_name);
-        fmt::println("***value: {} ***pc: {}", var, regs.pc);
+        //fmt::println("***value: {} ***pc: {}", var, regs.pc);
         if (var == target)
             return true;
         else

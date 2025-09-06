@@ -28,6 +28,7 @@ void SetupImGuiStyle();
 // Main code
 int main(int argc, char** argv)
 {
+    try {
     std::string ini_filepath = (argc > 1) ? argv[1] : "";
     PioStateMachineApp pioApp(ini_filepath);
 
@@ -134,6 +135,11 @@ int main(int argc, char** argv)
     ::UnregisterClassW(wc.lpszClassName, wc.hInstance);
 
     return 0;
+    }
+    catch (const std::exception& e)
+    {
+        LOG_FATAL_FMT("{}", e.what());
+    }
 }
 
 // Helper functions

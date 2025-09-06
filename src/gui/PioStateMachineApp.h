@@ -23,7 +23,7 @@ private:
     void renderSettingsWindow();
 
 public:
-    PioStateMachineApp(const std::string& filepath = "") : ini_filepath(filepath) {}
+    PioStateMachineApp(const std::string& filepath = "");
     void initialize();
     void reset();
     void renderUI();

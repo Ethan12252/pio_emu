@@ -16,6 +16,9 @@ PioStateMachine::PioStateMachine()
 
 PioStateMachine::PioStateMachine(const std::string& filepath)
 {
+    if (filepath.empty())
+        throw std::runtime_error("Config file not found");
+    
     // Initilze
     setDefault();
 
