@@ -16,6 +16,14 @@ void PioStateMachineApp::initialize() {
     show_settings_window = true;
     done = false;
     breakpoints.clear();
+
+    timing_timestamps.clear();
+    timing_values.clear();
+    timing_values.resize(32);
+    current_cycle = 0;  // Reset to 0
+    for (int i = 0; i < 32; i++) {
+        selected_pins[i] = false;
+    }
 }
 
 void PioStateMachineApp::reset() {
@@ -70,6 +78,10 @@ void PioStateMachineApp::renderControlWindow() {
     if (ImGui::Button("Reset Emulator")) {
         pio.reset(ini_filepath); // reset state machine 
         reset();                 // reset gui state
+        // reset timing diagram
+        timing_timestamps.clear();
+        timing_values.clear();
+        current_cycle = 0.0;
     }
 
     ImGui::Separator();
@@ -849,18 +861,23 @@ void PioStateMachineApp::renderUI() {
     }
 }
 
-// Change data types to use integers for cleaner display
-void PioStateMachineApp::updateTimingData() {
-    current_time += 1.0;  // Keep as double for ImPlot compatibility
 
-    // Record current state of selected GPIO pin as clean 0 or 1
-    timing_timestamps.push_back(current_time);
-    timing_values.push_back(pio.gpio.raw_data[selected_gpio_pin] ? 1.0 : 0.0);  // Force to 1.0 or 0.0
+void PioStateMachineApp::updateTimingData() {
+    current_cycle += 1;  // Integer increment
+
+    timing_timestamps.push_back(current_cycle);
+
+    // Record data for all pins as 0 or 1 integers
+    for (int pin = 0; pin < 32; pin++) {
+        timing_values[pin].push_back(pio.gpio.raw_data[pin] ? 1 : 0);  // Pure integers
+    }
 
     // Keep buffer size manageable
     if (timing_timestamps.size() > MAX_TIMING_SAMPLES) {
         timing_timestamps.erase(timing_timestamps.begin());
-        timing_values.erase(timing_values.begin());
+        for (int pin = 0; pin < 32; pin++) {
+            timing_values[pin].erase(timing_values[pin].begin());
+        }
     }
 }
 
@@ -873,41 +890,140 @@ void PioStateMachineApp::renderTimingWindow() {
     ImGui::Text("GPIO Pin Timing Diagram");
     ImGui::Separator();
 
-    // GPIO pin selector
-    ImGui::InputInt("GPIO Pin", &selected_gpio_pin);
-    if (selected_gpio_pin < 0) selected_gpio_pin = 0;
-    if (selected_gpio_pin > 31) selected_gpio_pin = 31;
+    // Compact pin selection in table format
+    ImGui::Text("Select up to 5 pins to display:");
+    static int selected_pin_list[5] = { -1, -1, -1, -1, -1 };
 
-    if (ImGui::Button("Clear History")) {
-        timing_timestamps.clear();
-        timing_values.clear();
-        current_time = 0.0;
-    }
+    if (ImGui::BeginTable("PinSelection", 5, ImGuiTableFlags_Borders | ImGuiTableFlags_SizingStretchProp)) {
+        ImGui::TableSetupColumn("Pin 1");
+        ImGui::TableSetupColumn("Pin 2");
+        ImGui::TableSetupColumn("Pin 3");
+        ImGui::TableSetupColumn("Pin 4");
+        ImGui::TableSetupColumn("Pin 5");
+        ImGui::TableHeadersRow();
 
-    // Plot the timing diagram
-    if (timing_timestamps.size() > 1 && ImPlot::BeginPlot("##Timing", ImVec2(-1, 200))) {
-        ImPlot::SetupAxes("Clock Cycles", "Logic Level");
+        // Pin input row
+        ImGui::TableNextRow();
+        for (int slot = 0; slot < 5; slot++) {
+            ImGui::TableSetColumnIndex(slot);
+            ImGui::PushID(slot);
+            ImGui::SetNextItemWidth(-1);
+            ImGui::InputInt("##pin", &selected_pin_list[slot]);
 
-        // Set integer-only ticks on X axis and 0/1 on Y axis
-        ImPlot::SetupAxisLimits(ImAxis_X1, 0, current_time + 1);
-        ImPlot::SetupAxisLimits(ImAxis_Y1, -0.2, 1.2);
-        ImPlot::SetupAxisFormat(ImAxis_X1, "%.0f");  // No decimal places on X axis
-        ImPlot::SetupAxisFormat(ImAxis_Y1, "%.0f");  // No decimal places on Y axis
-        ImPlot::SetupAxisTicks(ImAxis_Y1, 0.0, 1.0, 2);  // Only show 0 and 1 ticks on Y axis
-
-        std::string label = "GPIO " + std::to_string(selected_gpio_pin);
-
-        if (!timing_timestamps.empty() && !timing_values.empty()) {
-            // Use stairs plot for digital signal appearance
-            ImPlot::SetNextLineStyle(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), 2.0f);  // Green, thick line
-            ImPlot::PlotStairs(label.c_str(),
-                &timing_timestamps[0],
-                &timing_values[0],
-                static_cast<int>(timing_timestamps.size()));
+            // Validate range
+            if (selected_pin_list[slot] < -1) selected_pin_list[slot] = -1;
+            if (selected_pin_list[slot] > 31) selected_pin_list[slot] = 31;
+            ImGui::PopID();
         }
 
-        ImPlot::EndPlot();
+        // Current value row
+        ImGui::TableNextRow();
+        for (int slot = 0; slot < 5; slot++) {
+            ImGui::TableSetColumnIndex(slot);
+            if (selected_pin_list[slot] >= 0 && selected_pin_list[slot] < 32) {
+                ImGui::Text("Current: %d", pio.gpio.raw_data[selected_pin_list[slot]]);
+            }
+            else {
+                ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "(-1 = disabled)");
+            }
+        }
+
+        ImGui::EndTable();
     }
 
-    ImGui::End();
+    // Update selected_pins array based on the list
+    for (int i = 0; i < 32; i++) {
+        selected_pins[i] = false;
+    }
+    int selected_count = 0;
+    for (int slot = 0; slot < 5; slot++) {
+        if (selected_pin_list[slot] >= 0 && selected_pin_list[slot] < 32) {
+            selected_pins[selected_pin_list[slot]] = true;
+            selected_count++;
+        }
+    }
+
+    ImGui::Separator();
+
+    if (ImGui::Button("Clear All")) {
+        for (int i = 0; i < 5; i++) {
+            selected_pin_list[i] = -1;
+        }
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Clear History")) {
+        timing_timestamps.clear();
+        for (auto& pin_data : timing_values) {
+            pin_data.clear();
+        }
+        current_cycle = 0;
+    }
+
+    // Plot with proper vertical separation
+    if (timing_timestamps.size() > 1 && selected_count > 0 && ImPlot::BeginPlot("##Timing", ImVec2(-1, 400))) {
+        ImPlot::SetupAxes("Clock Cycles", "Channels");
+        ImPlot::SetupAxisLimits(ImAxis_X1, 0, current_cycle + 1);
+        ImPlot::SetupAxisLimits(ImAxis_Y1, -1, selected_count * 2, ImPlotCond_Always);
+
+        ImPlot::SetupAxisFormat(ImAxis_X1, "%.0f");
+
+        // Custom Y-axis labels showing pin numbers
+        std::vector<double> y_ticks;
+        std::vector<const char*> y_labels;
+        std::vector<std::string> label_strings;
+
+        int plot_index = 0;
+        for (int slot = 0; slot < 5; slot++) {
+            int pin = selected_pin_list[slot];
+            if (pin >= 0 && pin < 32) {
+                y_ticks.push_back(plot_index * 2 + 0.5);
+                label_strings.push_back("GPIO" + std::to_string(pin));
+                plot_index++;
+            }
+        }
+
+        for (const auto& str : label_strings) {
+            y_labels.push_back(str.c_str());
+        }
+
+        if (!y_ticks.empty()) {
+            ImPlot::SetupAxisTicks(ImAxis_Y1, y_ticks.data(), static_cast<int>(y_ticks.size()), y_labels.data());
+        }
+
+        ImPlot::SetupAxis(ImAxis_Y1, "Channels", ImPlotAxisFlags_Lock);
+
+        // Colors for different pins
+        ImVec4 colors[] = {
+            ImVec4(0.0f, 1.0f, 0.0f, 1.0f),  // Green
+            ImVec4(1.0f, 0.0f, 0.0f, 1.0f),  // Red  
+            ImVec4(0.0f, 0.0f, 1.0f, 1.0f),  // Blue
+            ImVec4(1.0f, 1.0f, 0.0f, 1.0f),  // Yellow
+            ImVec4(1.0f, 0.0f, 1.0f, 1.0f)   // Magenta
+        };
+
+        plot_index = 0;
+        for (int slot = 0; slot < 5; slot++) {
+            int pin = selected_pin_list[slot];
+            if (pin >= 0 && pin < 32 && pin < timing_values.size() && !timing_values[pin].empty()) {
+                // Convert to double with proper channel separation
+                std::vector<double> double_timestamps(timing_timestamps.begin(), timing_timestamps.end());
+                std::vector<double> offset_values;
+                for (int val : timing_values[pin]) {
+                    offset_values.push_back(static_cast<double>(val + plot_index * 2));
+                }
+
+                std::string label = "GPIO " + std::to_string(pin);
+                ImPlot::SetNextLineStyle(colors[plot_index % 5], 2.0f);
+                ImPlot::PlotStairs(label.c_str(),
+                    double_timestamps.data(),
+                    offset_values.data(),
+                    static_cast<int>(timing_timestamps.size()));
+                plot_index++;
+            }
+        }
+
+        ImPlot::EndPlot();  // This was missing - critical!
+    }
+
+    ImGui::End();  // This must always be called
 }

@@ -22,10 +22,10 @@ private:
 
     // timing diagram
     bool show_timing_window = true;
-    int selected_gpio_pin = 0;
-    std::vector<double> timing_timestamps;
-    std::vector<double> timing_values;
-    double current_time = 0.0;
+    bool selected_pins[32] = { false };
+    std::vector<int> timing_timestamps;
+    std::vector<std::vector<int>> timing_values{ 32 };
+    int current_cycle = 0;
     static const size_t MAX_TIMING_SAMPLES = 1000;
 
     // UI rendering methods for each window
