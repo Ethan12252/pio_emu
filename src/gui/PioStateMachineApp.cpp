@@ -72,7 +72,7 @@ void PioStateMachineApp::renderControlWindow() {
     static uint32_t target_value = 0;
     static int max_cycles = 10000;
     ImGui::InputText("Variable Name", var_name, IM_ARRAYSIZE(var_name));
-    ImGui::InputScalar("Target Value", ImGuiDataType_U32, &target_value, nullptr, nullptr, "%08X", ImGuiInputTextFlags_CharsHexadecimal);
+    ImGui::InputScalar("Target Value", ImGuiDataType_U32, &target_value, nullptr, nullptr, "%u");
     ImGui::InputInt("Max Cycles", &max_cycles);
     if (max_cycles < 1) max_cycles = 1;
     if (ImGui::Button("Run Until")) {
@@ -192,22 +192,22 @@ void PioStateMachineApp::renderVariableWindow() {
                 ImGui::TableSetupColumn("Pindir (0=out,1=in)");
                 ImGui::TableHeadersRow();
 
-                for (int i = 0; i < 32; ++i) {
+                for (int pin = 0; pin < 32; ++pin) {
                     ImGui::TableNextRow();
                     ImGui::TableSetColumnIndex(0);
-                    ImGui::Text("%d", i);
+                    ImGui::Text("%d", pin);
                     ImGui::TableSetColumnIndex(1);
-                    int raw_data = pio.gpio.raw_data[i];
-                    ImGui::PushID(i * 2);
+                    int raw_data = pio.gpio.raw_data[pin];
+                    ImGui::PushID(pin * 2);
                     if (ImGui::InputInt("##raw_data", &raw_data, 0)) {
-                        pio.gpio.raw_data[i] = static_cast<int8_t>(raw_data & 1);
+                        pio.gpio.raw_data[pin] = static_cast<int8_t>(raw_data & 1);
                     }
                     ImGui::PopID();
                     ImGui::TableSetColumnIndex(2);
-                    int pindir = pio.gpio.pindirs[i];
-                    ImGui::PushID(i * 2 + 1);
+                    int pindir = pio.gpio.pindirs[pin];
+                    ImGui::PushID(pin * 2 + 1);
                     if (ImGui::InputInt("##pindir", &pindir, 0)) {
-                        pio.gpio.pindirs[i] = static_cast<int8_t>(pindir & 1);
+                        pio.gpio.pindirs[pin] = static_cast<int8_t>(pindir & 1);
                     }
                     ImGui::PopID();
                 }
@@ -336,6 +336,7 @@ void PioStateMachineApp::renderSettingsWindow() {
     }
 
     ImGui::Text("Configuration Settings");
+    ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Settings are editable only when clock is 0");
     ImGui::Separator();
 
     if (ImGui::BeginTable("SettingsTable", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_ScrollY, ImVec2(0.0f, ImGui::GetTextLineHeight() * 20))) {
@@ -347,198 +348,308 @@ void PioStateMachineApp::renderSettingsWindow() {
         ImGui::TableSetColumnIndex(0);
         ImGui::Text("Sideset Count");
         ImGui::TableSetColumnIndex(1);
-        int sideset_count = pio.settings.sideset_count;
-        if (ImGui::InputInt("##sideset_count", &sideset_count)) {
-            pio.settings.sideset_count = sideset_count;
+        if (pio.clock == 0) {
+            int sideset_count = pio.settings.sideset_count;
+            if (ImGui::InputInt("##sideset_count", &sideset_count)) {
+                pio.settings.sideset_count = sideset_count;
+            }
+        }
+        else {
+            ImGui::Text("%d", pio.settings.sideset_count);
         }
 
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0);
         ImGui::Text("Sideset Opt");
         ImGui::TableSetColumnIndex(1);
-        bool sideset_opt = pio.settings.sideset_opt;
-        if (ImGui::Checkbox("##sideset_opt", &sideset_opt)) {
-            pio.settings.sideset_opt = sideset_opt;
+        if (pio.clock == 0) {
+            bool sideset_opt = pio.settings.sideset_opt;
+            if (ImGui::Checkbox("##sideset_opt", &sideset_opt)) {
+                pio.settings.sideset_opt = sideset_opt;
+            }
+        }
+        else {
+            ImGui::Text("%s", pio.settings.sideset_opt ? "true" : "false");
         }
 
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0);
         ImGui::Text("Sideset to Pindirs");
         ImGui::TableSetColumnIndex(1);
-        bool sideset_to_pindirs = pio.settings.sideset_to_pindirs;
-        if (ImGui::Checkbox("##sideset_to_pindirs", &sideset_to_pindirs)) {
-            pio.settings.sideset_to_pindirs = sideset_to_pindirs;
+        if (pio.clock == 0) {
+            bool sideset_to_pindirs = pio.settings.sideset_to_pindirs;
+            if (ImGui::Checkbox("##sideset_to_pindirs", &sideset_to_pindirs)) {
+                pio.settings.sideset_to_pindirs = sideset_to_pindirs;
+            }
+        }
+        else {
+            ImGui::Text("%s", pio.settings.sideset_to_pindirs ? "true" : "false");
         }
 
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0);
         ImGui::Text("Sideset Base");
         ImGui::TableSetColumnIndex(1);
-        int sideset_base = pio.settings.sideset_base;
-        if (ImGui::InputInt("##sideset_base", &sideset_base)) {
-            pio.settings.sideset_base = sideset_base;
+        if (pio.clock == 0) {
+            int sideset_base = pio.settings.sideset_base;
+            if (ImGui::InputInt("##sideset_base", &sideset_base)) {
+                pio.settings.sideset_base = sideset_base;
+            }
+        }
+        else {
+            ImGui::Text("%d", pio.settings.sideset_base);
         }
 
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0);
         ImGui::Text("In Base");
         ImGui::TableSetColumnIndex(1);
-        int in_base = pio.settings.in_base;
-        if (ImGui::InputInt("##in_base", &in_base)) {
-            pio.settings.in_base = in_base;
+        if (pio.clock == 0) {
+            int in_base = pio.settings.in_base;
+            if (ImGui::InputInt("##in_base", &in_base)) {
+                pio.settings.in_base = in_base;
+            }
+        }
+        else {
+            ImGui::Text("%d", pio.settings.in_base);
         }
 
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0);
         ImGui::Text("Out Base");
         ImGui::TableSetColumnIndex(1);
-        int out_base = pio.settings.out_base;
-        if (ImGui::InputInt("##out_base", &out_base)) {
-            pio.settings.out_base = out_base;
+        if (pio.clock == 0) {
+            int out_base = pio.settings.out_base;
+            if (ImGui::InputInt("##out_base", &out_base)) {
+                pio.settings.out_base = out_base;
+            }
+        }
+        else {
+            ImGui::Text("%d", pio.settings.out_base);
         }
 
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0);
         ImGui::Text("Set Base");
         ImGui::TableSetColumnIndex(1);
-        int set_base = pio.settings.set_base;
-        if (ImGui::InputInt("##set_base", &set_base)) {
-            pio.settings.set_base = set_base;
+        if (pio.clock == 0) {
+            int set_base = pio.settings.set_base;
+            if (ImGui::InputInt("##set_base", &set_base)) {
+                pio.settings.set_base = set_base;
+            }
+        }
+        else {
+            ImGui::Text("%d", pio.settings.set_base);
         }
 
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0);
         ImGui::Text("Jmp Pin");
         ImGui::TableSetColumnIndex(1);
-        int jmp_pin = pio.settings.jmp_pin;
-        if (ImGui::InputInt("##jmp_pin", &jmp_pin)) {
-            pio.settings.jmp_pin = jmp_pin;
+        if (pio.clock == 0) {
+            int jmp_pin = pio.settings.jmp_pin;
+            if (ImGui::InputInt("##jmp_pin", &jmp_pin)) {
+                pio.settings.jmp_pin = jmp_pin;
+            }
+        }
+        else {
+            ImGui::Text("%d", pio.settings.jmp_pin);
         }
 
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0);
         ImGui::Text("Set Count");
         ImGui::TableSetColumnIndex(1);
-        int set_count = pio.settings.set_count;
-        if (ImGui::InputInt("##set_count", &set_count)) {
-            pio.settings.set_count = set_count;
+        if (pio.clock == 0) {
+            int set_count = pio.settings.set_count;
+            if (ImGui::InputInt("##set_count", &set_count)) {
+                pio.settings.set_count = set_count;
+            }
+        }
+        else {
+            ImGui::Text("%d", pio.settings.set_count);
         }
 
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0);
         ImGui::Text("Out Count");
         ImGui::TableSetColumnIndex(1);
-        int out_count = pio.settings.out_count;
-        if (ImGui::InputInt("##out_count", &out_count)) {
-            pio.settings.out_count = out_count;
+        if (pio.clock == 0) {
+            int out_count = pio.settings.out_count;
+            if (ImGui::InputInt("##out_count", &out_count)) {
+                pio.settings.out_count = out_count;
+            }
+        }
+        else {
+            ImGui::Text("%d", pio.settings.out_count);
         }
 
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0);
         ImGui::Text("Push Threshold");
         ImGui::TableSetColumnIndex(1);
-        uint32_t push_threshold = pio.settings.push_threshold;
-        if (ImGui::InputScalar("##push_threshold", ImGuiDataType_U32, &push_threshold)) {
-            pio.settings.push_threshold = push_threshold;
+        if (pio.clock == 0) {
+            uint32_t push_threshold = pio.settings.push_threshold;
+            if (ImGui::InputScalar("##push_threshold", ImGuiDataType_U32, &push_threshold)) {
+                pio.settings.push_threshold = push_threshold;
+            }
+        }
+        else {
+            ImGui::Text("%u", pio.settings.push_threshold);
         }
 
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0);
         ImGui::Text("Pull Threshold");
         ImGui::TableSetColumnIndex(1);
-        uint32_t pull_threshold = pio.settings.pull_threshold;
-        if (ImGui::InputScalar("##pull_threshold", ImGuiDataType_U32, &pull_threshold)) {
-            pio.settings.pull_threshold = pull_threshold;
+        if (pio.clock == 0) {
+            uint32_t pull_threshold = pio.settings.pull_threshold;
+            if (ImGui::InputScalar("##pull_threshold", ImGuiDataType_U32, &pull_threshold)) {
+                pio.settings.pull_threshold = pull_threshold;
+            }
+        }
+        else {
+            ImGui::Text("%u", pio.settings.pull_threshold);
         }
 
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0);
         ImGui::Text("FIFO Level N");
         ImGui::TableSetColumnIndex(1);
-        int fifo_level_N = pio.settings.fifo_level_N;
-        if (ImGui::InputInt("##fifo_level_N", &fifo_level_N)) {
-            pio.settings.fifo_level_N = fifo_level_N;
+        if (pio.clock == 0) {
+            int fifo_level_N = pio.settings.fifo_level_N;
+            if (ImGui::InputInt("##fifo_level_N", &fifo_level_N)) {
+                pio.settings.fifo_level_N = fifo_level_N;
+            }
+        }
+        else {
+            ImGui::Text("%d", pio.settings.fifo_level_N);
         }
 
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0);
         ImGui::Text("Wrap Start");
         ImGui::TableSetColumnIndex(1);
-        uint32_t wrap_start = pio.settings.wrap_start;
-        if (ImGui::InputScalar("##wrap_start", ImGuiDataType_U32, &wrap_start)) {
-            pio.settings.wrap_start = wrap_start;
+        if (pio.clock == 0) {
+            uint32_t wrap_start = pio.settings.wrap_start;
+            if (ImGui::InputScalar("##wrap_start", ImGuiDataType_U32, &wrap_start)) {
+                pio.settings.wrap_start = wrap_start;
+            }
+        }
+        else {
+            ImGui::Text("%u", pio.settings.wrap_start);
         }
 
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0);
         ImGui::Text("Wrap End");
         ImGui::TableSetColumnIndex(1);
-        uint32_t wrap_end = pio.settings.wrap_end;
-        if (ImGui::InputScalar("##wrap_end", ImGuiDataType_U32, &wrap_end)) {
-            pio.settings.wrap_end = wrap_end;
+        if (pio.clock == 0) {
+            uint32_t wrap_end = pio.settings.wrap_end;
+            if (ImGui::InputScalar("##wrap_end", ImGuiDataType_U32, &wrap_end)) {
+                pio.settings.wrap_end = wrap_end;
+            }
+        }
+        else {
+            ImGui::Text("%u", pio.settings.wrap_end);
         }
 
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0);
         ImGui::Text("In Shift Right");
         ImGui::TableSetColumnIndex(1);
-        bool in_shift_right = pio.settings.in_shift_right;
-        if (ImGui::Checkbox("##in_shift_right", &in_shift_right)) {
-            pio.settings.in_shift_right = in_shift_right;
+        if (pio.clock == 0) {
+            bool in_shift_right = pio.settings.in_shift_right;
+            if (ImGui::Checkbox("##in_shift_right", &in_shift_right)) {
+                pio.settings.in_shift_right = in_shift_right;
+            }
+        }
+        else {
+            ImGui::Text("%s", pio.settings.in_shift_right ? "true" : "false");
         }
 
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0);
         ImGui::Text("Out Shift Right");
         ImGui::TableSetColumnIndex(1);
-        bool out_shift_right = pio.settings.out_shift_right;
-        if (ImGui::Checkbox("##out_shift_right", &out_shift_right)) {
-            pio.settings.out_shift_right = out_shift_right;
+        if (pio.clock == 0) {
+            bool out_shift_right = pio.settings.out_shift_right;
+            if (ImGui::Checkbox("##out_shift_right", &out_shift_right)) {
+                pio.settings.out_shift_right = out_shift_right;
+            }
+        }
+        else {
+            ImGui::Text("%s", pio.settings.out_shift_right ? "true" : "false");
         }
 
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0);
         ImGui::Text("In Shift Autopush");
         ImGui::TableSetColumnIndex(1);
-        bool in_shift_autopush = pio.settings.in_shift_autopush;
-        if (ImGui::Checkbox("##in_shift_autopush", &in_shift_autopush)) {
-            pio.settings.in_shift_autopush = in_shift_autopush;
+        if (pio.clock == 0) {
+            bool in_shift_autopush = pio.settings.in_shift_autopush;
+            if (ImGui::Checkbox("##in_shift_autopush", &in_shift_autopush)) {
+                pio.settings.in_shift_autopush = in_shift_autopush;
+            }
+        }
+        else {
+            ImGui::Text("%s", pio.settings.in_shift_autopush ? "true" : "false");
         }
 
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0);
         ImGui::Text("Out Shift Autopull");
         ImGui::TableSetColumnIndex(1);
-        bool out_shift_autopull = pio.settings.out_shift_autopull;
-        if (ImGui::Checkbox("##out_shift_autopull", &out_shift_autopull)) {
-            pio.settings.out_shift_autopull = out_shift_autopull;
+        if (pio.clock == 0) {
+            bool out_shift_autopull = pio.settings.out_shift_autopull;
+            if (ImGui::Checkbox("##out_shift_autopull", &out_shift_autopull)) {
+                pio.settings.out_shift_autopull = out_shift_autopull;
+            }
+        }
+        else {
+            ImGui::Text("%s", pio.settings.out_shift_autopull ? "true" : "false");
         }
 
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0);
         ImGui::Text("Autopull Enable");
         ImGui::TableSetColumnIndex(1);
-        bool autopull_enable = pio.settings.autopull_enable;
-        if (ImGui::Checkbox("##autopull_enable", &autopull_enable)) {
-            pio.settings.autopull_enable = autopull_enable;
+        if (pio.clock == 0) {
+            bool autopull_enable = pio.settings.autopull_enable;
+            if (ImGui::Checkbox("##autopull_enable", &autopull_enable)) {
+                pio.settings.autopull_enable = autopull_enable;
+            }
+        }
+        else {
+            ImGui::Text("%s", pio.settings.autopull_enable ? "true" : "false");
         }
 
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0);
         ImGui::Text("Autopush Enable");
         ImGui::TableSetColumnIndex(1);
-        bool autopush_enable = pio.settings.autopush_enable;
-        if (ImGui::Checkbox("##autopush_enable", &autopush_enable)) {
-            pio.settings.autopush_enable = autopush_enable;
+        if (pio.clock == 0) {
+            bool autopush_enable = pio.settings.autopush_enable;
+            if (ImGui::InputScalar("##autopush_enable", ImGuiDataType_U32, &autopush_enable)) {
+                pio.settings.autopush_enable = autopush_enable;
+            }
+        }
+        else {
+            ImGui::Text("%s", pio.settings.autopush_enable ? "true" : "false");
         }
 
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0);
         ImGui::Text("Status Sel");
         ImGui::TableSetColumnIndex(1);
-        bool status_sel = pio.settings.status_sel;
-        if (ImGui::Checkbox("##status_sel", &status_sel)) {
-            pio.settings.status_sel = status_sel;
+        if (pio.clock == 0) {
+            bool status_sel = pio.settings.status_sel;
+            if (ImGui::Checkbox("##status_sel", &status_sel)) {
+                pio.settings.status_sel = status_sel;
+            }
+        }
+        else {
+            ImGui::Text("%s", pio.settings.status_sel ? "true" : "false");
         }
 
         ImGui::EndTable();
@@ -554,7 +665,7 @@ void PioStateMachineApp::renderProgramWindow() {
     }
 
     ImGui::Text("Instruction Memory");
-    ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Highlighted instruction is currently executing");
+    ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Instructions are editable only when clock is 0");
     ImGui::Separator();
 
     if (ImGui::BeginTable("InstructionTable", 3, ImGuiTableFlags_Borders | ImGuiTableFlags_SizingStretchProp)) {
@@ -584,12 +695,17 @@ void PioStateMachineApp::renderProgramWindow() {
                 ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, ImGui::GetColorU32(ImVec4(0.3f, 0.6f, 0.3f, 0.65f)));
             }
             ImGui::TableSetColumnIndex(0);
-            ImGui::Text("0x%02X", i);
+            ImGui::Text("%d", i);
             ImGui::TableSetColumnIndex(1);
             ImGui::PushID(i);
             uint16_t instr = pio.instructionMemory[i];
-            if (ImGui::InputScalar("##instr", ImGuiDataType_U16, &instr, nullptr, nullptr, "%04X", ImGuiInputTextFlags_CharsHexadecimal)) {
-                pio.instructionMemory[i] = instr;
+            if (pio.clock == 0) {
+                if (ImGui::InputScalar("##instr", ImGuiDataType_U16, &instr, nullptr, nullptr, "%04X", ImGuiInputTextFlags_CharsHexadecimal)) {
+                    pio.instructionMemory[i] = instr;
+                }
+            }
+            else {
+                ImGui::Text("0x%04X", instr);
             }
             ImGui::PopID();
             ImGui::TableSetColumnIndex(2);
