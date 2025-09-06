@@ -110,6 +110,7 @@ public:
 
     // runtime helper
     bool run_until_var(const std::string& var_name, uint32_t target, int max_cycles = 10000);
+    std::array<std::string, 32> instruction_text;
 
     //private:
     void setup_var_access();
@@ -136,6 +137,7 @@ public:
 
     void setDefault();
     void parseSetting(const std::string& filepath);
+    void reset(const std::string& filepath);
 };
 
 

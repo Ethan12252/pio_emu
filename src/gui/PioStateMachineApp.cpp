@@ -61,7 +61,8 @@ void PioStateMachineApp::renderControlWindow() {
     }
 
     if (ImGui::Button("Reset Emulator")) {
-        reset();
+        pio.reset(ini_filepath); // reset state machine 
+        reset();                 // reset gui state
     }
 
     ImGui::Separator();
@@ -257,7 +258,7 @@ void PioStateMachineApp::renderVariableWindow() {
                     pio.fifo.pull_is_stalling = pull_stall;
                 }
 
-                for (int i = 0; i < 8; ++i) {
+                for (int i = 0; i < 4; ++i) {
                     ImGui::TableNextRow();
                     ImGui::TableSetColumnIndex(0);
                     ImGui::Text("TX FIFO[%d]", i);
@@ -270,13 +271,13 @@ void PioStateMachineApp::renderVariableWindow() {
                     ImGui::PopID();
                 }
 
-                for (int i = 0; i < 8; ++i) {
+                for (int i = 0; i < 4; ++i) {
                     ImGui::TableNextRow();
                     ImGui::TableSetColumnIndex(0);
                     ImGui::Text("RX FIFO[%d]", i);
                     ImGui::TableSetColumnIndex(1);
                     uint32_t rx_val = pio.fifo.rx_fifo[i];
-                    ImGui::PushID(i + 8);
+                    ImGui::PushID(i + 4);
                     if (ImGui::InputScalar("##rx", ImGuiDataType_U32, &rx_val, nullptr, nullptr, "%08X", ImGuiInputTextFlags_CharsHexadecimal)) {
                         pio.fifo.rx_fifo[i] = rx_val;
                     }

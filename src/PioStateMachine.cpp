@@ -18,7 +18,7 @@ PioStateMachine::PioStateMachine(const std::string& filepath)
 {
     if (filepath.empty())
         throw std::runtime_error("Config file not found");
-    
+
     // Initilze
     setDefault();
 
@@ -103,6 +103,8 @@ void PioStateMachine::setDefault()
 void PioStateMachine::parseSetting(const std::string& filepath)
 {
     IniParse::IniData data = IniParse::parseIni(filepath);
+
+    // parse settings
     for (const auto& setting : data["settings"])
     {
         const std::string& key = setting.first;
@@ -110,52 +112,52 @@ void PioStateMachine::parseSetting(const std::string& filepath)
 
         //fmt::println("Checking: {}", setting.first);
         try {
-        if (key == "sideset_count")
-            settings.sideset_count = std::stoi(val);
-        else if (key == "sideset_opt")
-            settings.sideset_opt = (val == "true");
-        else if (key == "sideset_to_pindirs")
-            settings.sideset_to_pindirs = (val == "true");
-        else if (key == "sideset_base")
-            settings.sideset_base = std::stoi(val);
-        else if (key == "in_base")
-            settings.in_base = std::stoi(val);
-        else if (key == "out_base")
-            settings.out_base = std::stoi(val);
-        else if (key == "set_base")
-            settings.set_base = std::stoi(val);
-        else if (key == "jmp_pin")
-            settings.jmp_pin = std::stoi(val);
-        else if (key == "set_count")
-            settings.set_count = std::stoi(val);
-        else if (key == "out_count")
-            settings.out_count = std::stoi(val);
-        else if (key == "push_threshold")
-            settings.push_threshold = static_cast<uint32_t>(std::stoul(val));
-        else if (key == "pull_threshold")
-            settings.pull_threshold = static_cast<uint32_t>(std::stoul(val));
-        else if (key == "fifo_level_N")
-            settings.fifo_level_N = std::stoi(val);
-        else if (key == "wrap_start")
-            settings.wrap_start = static_cast<uint32_t>(std::stoul(val));
-        else if (key == "wrap_end")
-            settings.wrap_end = static_cast<uint32_t>(std::stoul(val));
-        else if (key == "in_shift_right")
-            settings.in_shift_right = (val == "true");
-        else if (key == "out_shift_right")
-            settings.out_shift_right = (val == "true");
-        else if (key == "in_shift_autopush")
-            settings.in_shift_autopush = (val == "true");
-        else if (key == "out_shift_autopull")
-            settings.out_shift_autopull = (val == "true");
-        else if (key == "autopull_enable")
-            settings.autopull_enable = (val == "true");
-        else if (key == "autopush_enable")
-            settings.autopush_enable = (val == "true");
-        else if (key == "status_sel")
-            settings.status_sel = (val == "true");
-        else
-            LOG_FATAL("Unknown setting when parsing ini file.");
+            if (key == "sideset_count")
+                settings.sideset_count = std::stoi(val);
+            else if (key == "sideset_opt")
+                settings.sideset_opt = (val == "true");
+            else if (key == "sideset_to_pindirs")
+                settings.sideset_to_pindirs = (val == "true");
+            else if (key == "sideset_base")
+                settings.sideset_base = std::stoi(val);
+            else if (key == "in_base")
+                settings.in_base = std::stoi(val);
+            else if (key == "out_base")
+                settings.out_base = std::stoi(val);
+            else if (key == "set_base")
+                settings.set_base = std::stoi(val);
+            else if (key == "jmp_pin")
+                settings.jmp_pin = std::stoi(val);
+            else if (key == "set_count")
+                settings.set_count = std::stoi(val);
+            else if (key == "out_count")
+                settings.out_count = std::stoi(val);
+            else if (key == "push_threshold")
+                settings.push_threshold = static_cast<uint32_t>(std::stoul(val));
+            else if (key == "pull_threshold")
+                settings.pull_threshold = static_cast<uint32_t>(std::stoul(val));
+            else if (key == "fifo_level_N")
+                settings.fifo_level_N = std::stoi(val);
+            else if (key == "wrap_start")
+                settings.wrap_start = static_cast<uint32_t>(std::stoul(val));
+            else if (key == "wrap_end")
+                settings.wrap_end = static_cast<uint32_t>(std::stoul(val));
+            else if (key == "in_shift_right")
+                settings.in_shift_right = (val == "true");
+            else if (key == "out_shift_right")
+                settings.out_shift_right = (val == "true");
+            else if (key == "in_shift_autopush")
+                settings.in_shift_autopush = (val == "true");
+            else if (key == "out_shift_autopull")
+                settings.out_shift_autopull = (val == "true");
+            else if (key == "autopull_enable")
+                settings.autopull_enable = (val == "true");
+            else if (key == "autopush_enable")
+                settings.autopush_enable = (val == "true");
+            else if (key == "status_sel")
+                settings.status_sel = (val == "true");
+            else
+                LOG_FATAL("Unknown setting when parsing ini file.");
         }
         catch (const std::exception& e)
         {
@@ -163,6 +165,7 @@ void PioStateMachine::parseSetting(const std::string& filepath)
         }
     }
 
+    // parse instruction hex
     for (const auto& instruction : data["instructions"])
     {
         //std::cout << "key: " << setting.first << " value: " << setting.second << "\n";
@@ -187,8 +190,44 @@ void PioStateMachine::parseSetting(const std::string& filepath)
         }
     }
 
-    /*for (const auto& i : instructionMemory)
-        fmt::println("{:#x}", i);*/
+    // parse instruction text
+    for (const auto& instruction : data["instruction_text"])
+    {
+        const std::string& key = instruction.first;
+        const std::string& val = instruction.second;
+
+        try
+        {
+            int idx = std::stoi(key);
+            bool idx_valid = idx >= 0 && idx <= settings.wrap_end;
+
+            auto value = val;
+
+            if (idx_valid)
+                instruction_text[idx] = value;
+            else
+                LOG_FATAL_FMT("invalid index for instruction text idx:{}", idx);
+        }
+        catch (const std::exception& e)
+        {
+            LOG_FATAL_FMT("{}", e.what());
+        }
+    }
+
+    /*for (const auto& i : instruction_text)
+        fmt::println("{}", i);*/
+}
+
+void PioStateMachine::reset(const std::string& filepath)
+{
+    if (filepath.empty())
+        throw std::runtime_error("Config file not found");
+
+    // Initilze
+    setDefault();
+
+    // parse Settings and insstruction from ini file
+    parseSetting(filepath);
 }
 
 void PioStateMachine::push_to_rx_fifo()

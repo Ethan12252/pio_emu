@@ -65,6 +65,13 @@ def extract_wrap_points(section_content):
    
    return wrap_target, wrap_end
 
+def extract_text_instructions(instructions):
+    text_instructions = []
+    for hex_val, assembly in instructions:
+        # remove extra whitespaces
+        clean_assembly = assembly.strip()
+        text_instructions.append(clean_assembly)
+    return text_instructions
 
 def generate_ini(wrap_target, wrap_end, instructions):
    
@@ -101,6 +108,11 @@ def generate_ini(wrap_target, wrap_end, instructions):
    ini_content += "[instructions]\n"
    for i, (hex_val, assembly) in enumerate(instructions):
        ini_content += f"{i} = {hex_val}  ; {assembly}\n"
+
+   ini_content += "[instruction_text]\n"
+   text_instructions = extract_text_instructions(instructions)
+   for i, text_assembly in enumerate(text_instructions):
+      ini_content += f"{i} = {text_assembly}\n"
    
    return ini_content
 
