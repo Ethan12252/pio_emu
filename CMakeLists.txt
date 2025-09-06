@@ -31,6 +31,7 @@ add_executable(pio_emu_cli
 find_package(fmt CONFIG REQUIRED)
 find_package(doctest CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
+find_package(implot CONFIG REQUIRED)
 
 # pio_emu_cli
 target_link_libraries(${PROJECT_NAME}_cli PRIVATE 
@@ -43,7 +44,9 @@ target_link_libraries(${PROJECT_NAME}_gui PRIVATE
     imgui::imgui 
     d3d11
     fmt::fmt
+    implot::implot
 )
+
 
 #if (WIN32)
 #    set_target_properties(${PROJECT_NAME} PROPERTIES

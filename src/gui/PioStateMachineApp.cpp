@@ -48,6 +48,7 @@ void PioStateMachineApp::renderControlWindow() {
 
     if (ImGui::Button("Tick Once")) {
         pio.tick();
+        updateTimingData();
     }
 
     ImGui::SameLine();
@@ -61,6 +62,7 @@ void PioStateMachineApp::renderControlWindow() {
                 break;
             }
             pio.tick();
+            updateTimingData();
             steps_done++;
         }
     }
@@ -95,6 +97,7 @@ void PioStateMachineApp::renderControlWindow() {
                 break;
             }
             pio.tick();
+            updateTimingData();
             cycles++;
         }
     }
@@ -839,8 +842,72 @@ void PioStateMachineApp::renderUI() {
     renderSettingsWindow();
     renderProgramWindow();
     renderRuntimeWindow();
+    renderTimingWindow();
 
     if (!show_control_window && !show_variable_window && !show_settings_window && !show_program_window && !show_runtime_window) {
         done = true;
     }
+}
+
+// Change data types to use integers for cleaner display
+void PioStateMachineApp::updateTimingData() {
+    current_time += 1.0;  // Keep as double for ImPlot compatibility
+
+    // Record current state of selected GPIO pin as clean 0 or 1
+    timing_timestamps.push_back(current_time);
+    timing_values.push_back(pio.gpio.raw_data[selected_gpio_pin] ? 1.0 : 0.0);  // Force to 1.0 or 0.0
+
+    // Keep buffer size manageable
+    if (timing_timestamps.size() > MAX_TIMING_SAMPLES) {
+        timing_timestamps.erase(timing_timestamps.begin());
+        timing_values.erase(timing_values.begin());
+    }
+}
+
+void PioStateMachineApp::renderTimingWindow() {
+    if (!ImGui::Begin("Timing Diagram", &show_timing_window)) {
+        ImGui::End();
+        return;
+    }
+
+    ImGui::Text("GPIO Pin Timing Diagram");
+    ImGui::Separator();
+
+    // GPIO pin selector
+    ImGui::InputInt("GPIO Pin", &selected_gpio_pin);
+    if (selected_gpio_pin < 0) selected_gpio_pin = 0;
+    if (selected_gpio_pin > 31) selected_gpio_pin = 31;
+
+    if (ImGui::Button("Clear History")) {
+        timing_timestamps.clear();
+        timing_values.clear();
+        current_time = 0.0;
+    }
+
+    // Plot the timing diagram
+    if (timing_timestamps.size() > 1 && ImPlot::BeginPlot("##Timing", ImVec2(-1, 200))) {
+        ImPlot::SetupAxes("Clock Cycles", "Logic Level");
+
+        // Set integer-only ticks on X axis and 0/1 on Y axis
+        ImPlot::SetupAxisLimits(ImAxis_X1, 0, current_time + 1);
+        ImPlot::SetupAxisLimits(ImAxis_Y1, -0.2, 1.2);
+        ImPlot::SetupAxisFormat(ImAxis_X1, "%.0f");  // No decimal places on X axis
+        ImPlot::SetupAxisFormat(ImAxis_Y1, "%.0f");  // No decimal places on Y axis
+        ImPlot::SetupAxisTicks(ImAxis_Y1, 0.0, 1.0, 2);  // Only show 0 and 1 ticks on Y axis
+
+        std::string label = "GPIO " + std::to_string(selected_gpio_pin);
+
+        if (!timing_timestamps.empty() && !timing_values.empty()) {
+            // Use stairs plot for digital signal appearance
+            ImPlot::SetNextLineStyle(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), 2.0f);  // Green, thick line
+            ImPlot::PlotStairs(label.c_str(),
+                &timing_timestamps[0],
+                &timing_values[0],
+                static_cast<int>(timing_timestamps.size()));
+        }
+
+        ImPlot::EndPlot();
+    }
+
+    ImGui::End();
 }
