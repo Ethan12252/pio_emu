@@ -2,6 +2,7 @@
 #include "../PioStateMachine.h"
 #include "imgui.h"
 #include <string>
+#include <set>
 
 class PioStateMachineApp {
 private:
@@ -14,6 +15,7 @@ private:
     bool show_settings_window = true;
     bool done = false;
     int tick_steps = 1;
+    std::set<int> breakpoints;
 
     // UI rendering methods for each window
     void renderControlWindow();

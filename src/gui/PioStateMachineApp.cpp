@@ -1,7 +1,6 @@
 #include "PioStateMachineApp.h"
 
-
-PioStateMachineApp::PioStateMachineApp(const std::string& filepath /*= ""*/) 
+PioStateMachineApp::PioStateMachineApp(const std::string& filepath /*= ""*/)
     : ini_filepath(filepath), pio(PioStateMachine(filepath))
 {
 }
@@ -16,6 +15,7 @@ void PioStateMachineApp::initialize() {
     show_runtime_window = true;
     show_settings_window = true;
     done = false;
+    breakpoints.clear();
 }
 
 void PioStateMachineApp::reset() {
@@ -55,8 +55,13 @@ void PioStateMachineApp::renderControlWindow() {
     if (tick_steps < 1) tick_steps = 1;
     ImGui::SameLine();
     if (ImGui::Button("Tick Multiple")) {
-        for (int i = 0; i < tick_steps; ++i) {
+        int steps_done = 0;
+        while (steps_done < tick_steps) {
+            if (breakpoints.count(static_cast<int>(pio.regs.pc))) {
+                break;
+            }
             pio.tick();
+            steps_done++;
         }
     }
 
@@ -76,6 +81,22 @@ void PioStateMachineApp::renderControlWindow() {
     if (max_cycles < 1) max_cycles = 1;
     if (ImGui::Button("Run Until")) {
         pio.run_until_var(var_name, target_value, max_cycles);
+    }
+
+    ImGui::Separator();
+    ImGui::Text("Breakpoints");
+    static int max_cycles_bp = 10000;
+    ImGui::InputInt("Max Cycles BP", &max_cycles_bp);
+    if (max_cycles_bp < 1) max_cycles_bp = 1;
+    if (ImGui::Button("Continue to Breakpoint")) {
+        int cycles = 0;
+        while (cycles < max_cycles_bp) {
+            if (breakpoints.count(static_cast<int>(pio.regs.pc))) {
+                break;
+            }
+            pio.tick();
+            cycles++;
+        }
     }
 
     ImGui::End();
@@ -667,9 +688,11 @@ void PioStateMachineApp::renderProgramWindow() {
     ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Instructions are editable only when clock is 0");
     ImGui::Separator();
 
-    if (ImGui::BeginTable("InstructionTable", 3, ImGuiTableFlags_Borders | ImGuiTableFlags_SizingStretchProp)) {
+    if (ImGui::BeginTable("InstructionTable", 5, ImGuiTableFlags_Borders | ImGuiTableFlags_SizingStretchProp)) {
         ImGui::TableSetupColumn("Address", ImGuiTableColumnFlags_WidthFixed);
         ImGui::TableSetupColumn("Instruction");
+        ImGui::TableSetupColumn("Text");
+        ImGui::TableSetupColumn("BP", ImGuiTableColumnFlags_WidthFixed);
         ImGui::TableSetupColumn("Current");
         ImGui::TableHeadersRow();
 
@@ -708,6 +731,20 @@ void PioStateMachineApp::renderProgramWindow() {
             }
             ImGui::PopID();
             ImGui::TableSetColumnIndex(2);
+            ImGui::Text("%s", pio.instruction_text[i].c_str());
+            ImGui::TableSetColumnIndex(3);
+            ImGui::PushID(i + 32);
+            bool is_bp = breakpoints.count(i);
+            if (ImGui::Checkbox("##bp", &is_bp)) {
+                if (is_bp) {
+                    breakpoints.insert(i);
+                }
+                else {
+                    breakpoints.erase(i);
+                }
+            }
+            ImGui::PopID();
+            ImGui::TableSetColumnIndex(4);
             if (i == current_addr) {
                 ImGui::Text("<-- Current");
             }
@@ -740,76 +777,55 @@ void PioStateMachineApp::renderRuntimeWindow() {
         ImGui::TableSetColumnIndex(0);
         ImGui::Text("Clock");
         ImGui::TableSetColumnIndex(1);
-        int clock_val = pio.clock;
-        ImGui::Text("%d", clock_val);
+        ImGui::Text("%d", pio.clock);
 
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0);
         ImGui::Text("Current Instruction");
         ImGui::TableSetColumnIndex(1);
-        uint16_t curr_instr = pio.currentInstruction;
-        ImGui::Text("0x%04X", curr_instr);
+        ImGui::Text("0x%04X", pio.currentInstruction);
 
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0);
         ImGui::Text("State Machine Number");
         ImGui::TableSetColumnIndex(1);
-        uint16_t sm_num = pio.stateMachineNumber;
-        ImGui::Text("%u", sm_num);
+        ImGui::Text("%u", pio.stateMachineNumber);
 
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0);
         ImGui::Text("Jmp To");
         ImGui::TableSetColumnIndex(1);
-        int jmp_to = pio.jmp_to;
-        if (ImGui::InputInt("##jmp_to", &jmp_to)) {
-            pio.jmp_to = jmp_to;
-        }
+        ImGui::Text("%d", pio.jmp_to);
 
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0);
         ImGui::Text("Skip Increase PC");
         ImGui::TableSetColumnIndex(1);
-        bool skip_inc_pc = pio.skip_increase_pc;
-        if (ImGui::Checkbox("##skip_inc_pc", &skip_inc_pc)) {
-            pio.skip_increase_pc = skip_inc_pc;
-        }
+        ImGui::Text("%s", pio.skip_increase_pc ? "true" : "false");
 
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0);
         ImGui::Text("Delay Delay");
         ImGui::TableSetColumnIndex(1);
-        bool delay_delay = pio.delay_delay;
-        if (ImGui::Checkbox("##delay_delay", &delay_delay)) {
-            pio.delay_delay = delay_delay;
-        }
+        ImGui::Text("%s", pio.delay_delay ? "true" : "false");
 
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0);
         ImGui::Text("Skip Delay");
         ImGui::TableSetColumnIndex(1);
-        bool skip_delay = pio.skip_delay;
-        if (ImGui::Checkbox("##skip_delay", &skip_delay)) {
-            pio.skip_delay = skip_delay;
-        }
+        ImGui::Text("%s", pio.skip_delay ? "true" : "false");
 
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0);
         ImGui::Text("Exec Command");
         ImGui::TableSetColumnIndex(1);
-        bool exec_command = pio.exec_command;
-        if (ImGui::Checkbox("##exec_command", &exec_command)) {
-            pio.exec_command = exec_command;
-        }
+        ImGui::Text("%s", pio.exec_command ? "true" : "false");
 
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0);
         ImGui::Text("Wait is Stalling");
         ImGui::TableSetColumnIndex(1);
-        bool wait_stall = pio.wait_is_stalling;
-        if (ImGui::Checkbox("##wait_stall", &wait_stall)) {
-            pio.wait_is_stalling = wait_stall;
-        }
+        ImGui::Text("%s", pio.wait_is_stalling ? "true" : "false");
 
         ImGui::EndTable();
     }
