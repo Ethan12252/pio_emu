@@ -1,3 +1,5 @@
+#!python
+
 import re
 
 def extract_instructions(section_content):
